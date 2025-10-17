@@ -58,9 +58,10 @@ Your developer or technical team will install the extension. The installation pr
 
 **What your technical team needs to do:**
 1. Install by extracting the zip to your magento 2 `app/code` directory
-2. Enable the module
-3. Run Magento upgrade and compilation commands
-4. Clear cache
+2. Enable the module with the `php bin/magento module:enable Kiyoh_Reviews` command
+3. Run Magento upgrade with `php bin/magento setup:upgrade` command
+4. Run compilation command with `php bin/magento setup:di:compile` command
+5. Clear cache with `php bin/magento cache:flush` command
 
 Once installed, you'll see a new "Kiyoh" section in your Magento admin panel under **Stores > Configuration**.
 
