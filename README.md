@@ -57,7 +57,7 @@ Keep these credentials handy for the next step.
 Your developer or technical team will install the extension. The installation process typically takes 5-10 minutes.
 
 **What your technical team needs to do:**
-1. Install via Composer (recommended method)
+1. Install by extracting the zip to your magento 2 `app/code` directory
 2. Enable the module
 3. Run Magento upgrade and compilation commands
 4. Clear cache
