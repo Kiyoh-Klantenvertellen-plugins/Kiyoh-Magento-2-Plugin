@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+    <preference for="Kiyoh\Reviews\Api\ApiServiceInterface" type="Kiyoh\Reviews\Service\ApiService"/>
+    
+    <type name="Magento\Framework\Console\CommandListInterface">
+        <arguments>
+            <argument name="commands" xsi:type="array">
+                <item name="kiyoh_test_api" xsi:type="object">Kiyoh\Reviews\Console\Command\TestApiCommand</item>
+                <item name="kiyoh_check_config" xsi:type="object">Kiyoh\Reviews\Console\Command\CheckConfigCommand</item>
+                <item name="kiyoh_validate_product" xsi:type="object">Kiyoh\Reviews\Console\Command\ValidateProductDataCommand</item>
+                <item name="kiyoh_test_observer" xsi:type="object">Kiyoh\Reviews\Console\Command\TestOrderObserverCommand</item>
+                <item name="kiyoh_bulk_product_sync" xsi:type="object">Kiyoh\Reviews\Console\Command\BulkProductSyncCommand</item>
+                <item name="kiyoh_test_product_sync" xsi:type="object">Kiyoh\Reviews\Console\Command\TestProductSyncCommand</item>
+                <item name="kiyoh_debug_product_sync" xsi:type="object">Kiyoh\Reviews\Console\Command\DebugProductSyncCommand</item>
+                <item name="kiyoh_test_invitation_errors" xsi:type="object">Kiyoh\Reviews\Console\Command\TestInvitationErrorHandlingCommand</item>
+            </argument>
+        </arguments>
+    </type>
+</config>

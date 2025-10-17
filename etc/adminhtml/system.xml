@@ -1,0 +1,161 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Config:etc/system_file.xsd">
+    <system>
+        <tab id="kiyoh" translate="label" sortOrder="300">
+            <label>Kiyoh</label>
+        </tab>
+        <section id="kiyoh_reviews" translate="label" type="text" sortOrder="100" showInDefault="1" showInWebsite="1" showInStore="1">
+            <class>separator-top</class>
+            <label>Reviews Configuration</label>
+            <tab>kiyoh</tab>
+            <resource>Kiyoh_Reviews::config</resource>
+            
+            <group id="api_settings" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>API Settings</label>
+                <field id="enabled" translate="label" type="select" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Enable Kiyoh Reviews</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+                <field id="server" translate="label" type="select" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Server</label>
+                    <source_model>Kiyoh\Reviews\Model\Config\Source\Server</source_model>
+                    <comment>Select your Kiyoh/Klantenvertellen platform</comment>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+                <field id="location_id" translate="label" type="text" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Location ID</label>
+                    <comment>Your location ID from Kiyoh/Klantenvertellen account</comment>
+                    <validate>validate-number</validate>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+                <field id="api_token" translate="label" type="obscure" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>API Token</label>
+                    <backend_model>Kiyoh\Reviews\Model\Config\Backend\ValidateCredentials</backend_model>
+                    <comment>Your API token from Kiyoh/Klantenvertellen account (stored encrypted). Credentials will be validated on save.</comment>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+            </group>
+            
+            <group id="review_invitations" translate="label" type="text" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>Review Invitations</label>
+                <field id="enabled" translate="label" type="select" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Enable Review Invitations</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Enable automatic review invitations when orders reach specified status</comment>
+                </field>
+                <field id="invitation_type" translate="label" type="select" sortOrder="15" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Invitation Type</label>
+                    <source_model>Kiyoh\Reviews\Model\Config\Source\InvitationType</source_model>
+                    <comment>Choose whether to send shop + product reviews or product reviews only (sets product_invite API flag)</comment>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+                <field id="order_status_trigger" translate="label" type="multiselect" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Order Status Trigger</label>
+                    <source_model>Magento\Sales\Model\Config\Source\Order\Status</source_model>
+                    <comment>Select order statuses that will trigger review invitations</comment>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+                <field id="delay_days" translate="label" type="text" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Delay (Days)</label>
+                    <validate>validate-number validate-zero-or-greater</validate>
+                    <comment>Number of days to wait before sending invitation after order status change</comment>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+                <field id="max_products_per_invite" translate="label" type="text" sortOrder="35" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Maximum Products Per Invitation</label>
+                    <validate>validate-number validate-greater-than-zero</validate>
+                    <comment>Maximum number of products to include in each invitation (recommended: 3-5, API supports up to 10)</comment>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+                <field id="fallback_language" translate="label" type="text" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Fallback Language Code</label>
+                    <comment>Fallback language code when order language cannot be detected (e.g., en, nl, de, fr). System will auto-detect language from order store view first.</comment>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+                <field id="exclude_customer_groups" translate="label" type="multiselect" sortOrder="50" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Exclude Customer Groups (Optional)</label>
+                    <source_model>Magento\Customer\Model\Config\Source\Group</source_model>
+                    <comment>Customer groups that will not receive review invitations (leave empty to include all customer groups)</comment>
+                    <can_be_empty>1</can_be_empty>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+                <field id="exclude_product_groups" translate="label" type="multiselect" sortOrder="55" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Exclude Product Attribute Sets (Optional)</label>
+                    <source_model>Kiyoh\Reviews\Model\Config\Source\ExcludableAttributeSet</source_model>
+                    <comment>Product attribute sets that will not be included in review invitations (leave empty to include all products)</comment>
+                    <can_be_empty>1</can_be_empty>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+            </group>
+            
+            <group id="product_sync" translate="label" type="text" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>Product Synchronization</label>
+                <field id="enabled" translate="label" type="select" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Enable Product Sync</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Enable synchronization of product catalog to Kiyoh/Klantenvertellen for product reviews</comment>
+                </field>
+                <field id="auto_sync_enabled" translate="label" type="select" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Auto Sync on Product Changes</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Automatically sync products when they are created or modified</comment>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+                <field id="excluded_product_types" translate="label" type="multiselect" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Excluded Product Types</label>
+                    <source_model>Kiyoh\Reviews\Model\Config\Source\ExcludableProductType</source_model>
+                    <comment>Product types that will not be synchronized (leave empty to sync all product types)</comment>
+                    <can_be_empty>1</can_be_empty>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+                <field id="excluded_product_codes" translate="label" type="textarea" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Excluded Product Codes</label>
+                    <comment>Comma-separated list of product SKUs to exclude from sync (e.g., SAMPLE-001, TEST-SKU)</comment>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+                <field id="initial_sync_done" translate="label" type="select" sortOrder="45" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Initial Sync Completed</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Indicates whether initial product sync has been completed for this store. Set to "No" to trigger automatic initial sync via cron.</comment>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+                <field id="bulk_sync_button" translate="label" type="button" sortOrder="50" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Bulk Product Sync</label>
+                    <frontend_model>Kiyoh\Reviews\Block\Adminhtml\System\Config\BulkSyncButton</frontend_model>
+                    <comment>Manually trigger bulk synchronization of all products to Kiyoh/Klantenvertellen. This will sync products for the current store scope.</comment>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+            </group>
+        </section>
+    </system>
+</config>

@@ -1,0 +1,185 @@
+<?php
+/**
+ * @var \Kiyoh\Reviews\Block\Adminhtml\System\Config\BulkSyncButton $block
+ */
+?>
+<div id="kiyoh_bulk_sync_container">
+    <?= $block->getButtonHtml() ?>
+    
+    <div id="kiyoh_sync_progress" style="display: none; margin-top: 10px;">
+        <div class="admin__field-note">
+            <span id="kiyoh_sync_status">Initializing sync...</span>
+        </div>
+        <div style="margin-top: 8px;">
+            <div style="background: #f0f0f0; border-radius: 3px; height: 20px; overflow: hidden; position: relative;">
+                <div id="kiyoh_progress_bar" style="background: #79a22e; height: 100%; width: 0%; transition: width 0.3s;"></div>
+                <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; color: #333;">
+                    <span id="kiyoh_progress_text">0%</span>
+                </div>
+            </div>
+        </div>
+        <div style="margin-top: 5px;">
+            <div class="admin__field-note" style="font-size: 11px; color: #666;">
+                <span id="kiyoh_progress_details">Preparing products...</span>
+            </div>
+        </div>
+        <div style="margin-top: 3px;">
+            <div class="admin__field-note" style="font-size: 11px; color: #999;">
+                This may take several minutes for large catalogs. Please do not close this page.
+            </div>
+        </div>
+    </div>
+    
+    <div id="kiyoh_sync_results" style="display: none; margin-top: 10px;">
+        <div id="kiyoh_sync_message" class="admin__field-note"></div>
+        <div id="kiyoh_sync_details" style="margin-top: 5px; font-size: 11px; color: #666;"></div>
+    </div>
+</div>
+
+<script type="text/javascript">
+require(['jquery', 'Magento_Ui/js/modal/alert'], function($, alert) {
+    window.kiyohBulkSync = {
+        ajaxUrl: '<?= $block->escapeJs($block->getAjaxUrl()) ?>',
+        storeId: <?= $block->getCurrentStoreId() ?>,
+        startTime: null,
+        progressInterval: null,
+        estimatedBatches: 0,
+        
+        startSync: function() {
+            var self = this;
+            
+            $('#kiyoh_bulk_sync_button').prop('disabled', true).addClass('disabled');
+            $('#kiyoh_sync_progress').show();
+            $('#kiyoh_sync_results').hide();
+            $('#kiyoh_sync_status').text('Starting product sync...');
+            $('#kiyoh_progress_bar').css('width', '0%');
+            $('#kiyoh_progress_text').text('0%');
+            $('#kiyoh_progress_details').text('Preparing products...');
+            
+            self.startTime = Date.now();
+            self.startProgressAnimation();
+            
+            $.ajax({
+                url: self.ajaxUrl,
+                type: 'POST',
+                data: {
+                    store_id: self.storeId,
+                    form_key: FORM_KEY
+                },
+                dataType: 'json',
+                timeout: 600000,
+                success: function(response) {
+                    self.stopProgressAnimation();
+                    self.handleResponse(response);
+                },
+                error: function(xhr, status, error) {
+                    self.stopProgressAnimation();
+                    self.handleError(xhr, status, error);
+                }
+            });
+        },
+        
+        startProgressAnimation: function() {
+            var self = this;
+            var currentProgress = 0;
+            
+            self.progressInterval = setInterval(function() {
+                var elapsed = (Date.now() - self.startTime) / 1000;
+                
+                if (currentProgress < 90) {
+                    currentProgress = Math.min(90, Math.floor(elapsed / 2));
+                }
+                
+                $('#kiyoh_progress_bar').css('width', currentProgress + '%');
+                $('#kiyoh_progress_text').text(currentProgress + '%');
+                
+                var statusText = 'Syncing products...';
+                if (elapsed > 5) {
+                    statusText = 'Processing batches... (' + Math.floor(elapsed) + 's elapsed)';
+                }
+                $('#kiyoh_sync_status').text(statusText);
+                
+                var detailsText = 'Please wait while products are being synchronized.';
+                if (elapsed > 10) {
+                    detailsText = 'Large catalogs may take several minutes. Progress is being logged.';
+                }
+                $('#kiyoh_progress_details').html(detailsText);
+            }, 1000);
+        },
+        
+        stopProgressAnimation: function() {
+            var self = this;
+            if (self.progressInterval) {
+                clearInterval(self.progressInterval);
+                self.progressInterval = null;
+            }
+        },
+        
+        handleResponse: function(response) {
+            var self = this;
+            
+            $('#kiyoh_progress_bar').css('width', '100%');
+            $('#kiyoh_progress_text').text('100%');
+            
+            setTimeout(function() {
+                $('#kiyoh_bulk_sync_button').prop('disabled', false).removeClass('disabled');
+                $('#kiyoh_sync_progress').hide();
+                $('#kiyoh_sync_results').show();
+                
+                if (response.success) {
+                    $('#kiyoh_sync_message').html('<span style="color: #79a22e;">✓ ' + response.message + '</span>');
+                    
+                    var details = 'Products synced: ' + response.synced + ', Failed: ' + response.failed;
+                    if (response.total) {
+                        details += ' (Total: ' + response.total + ')';
+                    }
+                    if (response.total_batches) {
+                        details += '<br>Processed in ' + response.total_batches + ' batch(es)';
+                    }
+                    if (response.errors && response.errors.length > 0) {
+                        details += '<br>Errors: ' + response.errors.slice(0, 3).join(', ');
+                        if (response.errors.length > 3) {
+                            details += ' (and ' + (response.errors.length - 3) + ' more)';
+                        }
+                    }
+                    $('#kiyoh_sync_details').html(details);
+                } else {
+                    $('#kiyoh_sync_message').html('<span style="color: #e22626;">✗ ' + response.message + '</span>');
+                    
+                    var details = '';
+                    if (response.errors && response.errors.length > 0) {
+                        details = 'Errors: ' + response.errors.slice(0, 2).join(', ');
+                        if (response.errors.length > 2) {
+                            details += ' (and ' + (response.errors.length - 2) + ' more)';
+                        }
+                    }
+                    $('#kiyoh_sync_details').html(details);
+                }
+            }, 500);
+        },
+        
+        handleError: function(xhr, status, error) {
+            var self = this;
+            
+            $('#kiyoh_bulk_sync_button').prop('disabled', false).removeClass('disabled');
+            $('#kiyoh_sync_progress').hide();
+            $('#kiyoh_sync_results').show();
+            
+            var errorMsg = 'Request failed';
+            if (status === 'timeout') {
+                errorMsg = 'Request timed out - sync may still be running in background. Check system logs for details.';
+            } else if (xhr.responseText) {
+                try {
+                    var response = JSON.parse(xhr.responseText);
+                    errorMsg = response.message || errorMsg;
+                } catch (e) {
+                    errorMsg = 'Server error occurred';
+                }
+            }
+            
+            $('#kiyoh_sync_message').html('<span style="color: #e22626;">✗ ' + errorMsg + '</span>');
+            $('#kiyoh_sync_details').html('Check the system logs (var/log/kiyoh.log) for detailed progress and error information.');
+        }
+    };
+});
+</script>

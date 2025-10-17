@@ -1,0 +1,46 @@
+{
+    "name": "kiyoh/reviews",
+    "description": "Kiyoh Reviews integration for Magento 2 - Shop and Product Reviews",
+    "type": "magento2-module",
+    "version": "1.0.0",
+    "license": "proprietary",
+    "authors": [
+        {
+            "name": "Kiyoh",
+            "email": "info@kiyoh.com"
+        }
+    ],
+    "require": {
+        "php": ">=7.2.0",
+        "magento/framework": ">=102.0.0",
+        "magento/module-store": "*",
+        "magento/module-customer": "*",
+        "magento/module-sales": "*",
+        "magento/module-catalog": "*",
+        "magento/module-widget": "*",
+        "magento/module-config": "*"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9.5",
+        "magento/magento2-functional-testing-framework": "*"
+    },
+    "autoload": {
+        "files": [
+            "registration.php"
+        ],
+        "psr-4": {
+            "Kiyoh\\Reviews\\": ""
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Kiyoh\\Reviews\\Test\\": "Test/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit -c Test/phpunit.xml",
+        "test-unit": "phpunit -c Test/phpunit.xml --testsuite=\"Unit Tests\"",
+        "test-integration": "phpunit -c Test/phpunit.xml --testsuite=\"Integration Tests\"",
+        "test-coverage": "phpunit -c Test/phpunit.xml --coverage-html Test/coverage"
+    }
+}

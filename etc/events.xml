@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:Event/etc/events.xsd">
+    <event name="sales_order_save_after">
+        <observer name="kiyoh_reviews_order_save_after" instance="Kiyoh\Reviews\Observer\SalesOrderSaveAfter" />
+    </event>
+    
+    <event name="catalog_product_save_after">
+        <observer name="kiyoh_reviews_product_save_after" instance="Kiyoh\Reviews\Observer\CatalogProductSaveAfter" />
+    </event>
+    
+    <event name="catalog_product_delete_after">
+        <observer name="kiyoh_reviews_product_delete_after" instance="Kiyoh\Reviews\Observer\CatalogProductDeleteAfter" />
+    </event>
+</config>

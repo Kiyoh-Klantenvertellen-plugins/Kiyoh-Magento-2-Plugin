@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Store:etc/config.xsd">
+    <default>
+        <kiyoh_reviews>
+            <api_settings>
+                <enabled>0</enabled>
+                <server>kiyoh.com</server>
+                <location_id></location_id>
+                <api_token></api_token>
+            </api_settings>
+            <review_invitations>
+                <enabled>0</enabled>
+                <invitation_type>shop_and_product</invitation_type>
+                <order_status_trigger>complete</order_status_trigger>
+                <delay_days>7</delay_days>
+                <max_products_per_invite>5</max_products_per_invite>
+                <fallback_language>en</fallback_language>
+                <exclude_customer_groups></exclude_customer_groups>
+                <exclude_product_groups></exclude_product_groups>
+            </review_invitations>
+            <product_sync>
+                <enabled>0</enabled>
+                <auto_sync_enabled>1</auto_sync_enabled>
+                <excluded_product_types></excluded_product_types>
+                <excluded_product_codes></excluded_product_codes>
+                <initial_sync_done>0</initial_sync_done>
+            </product_sync>
+        </kiyoh_reviews>
+    </default>
+</config>
