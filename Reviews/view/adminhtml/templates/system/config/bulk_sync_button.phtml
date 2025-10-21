@@ -25,7 +25,7 @@
         </div>
         <div style="margin-top: 3px;">
             <div class="admin__field-note" style="font-size: 11px; color: #999;">
-                This may take several minutes for large catalogs. Please do not close this page.
+                This may take several minutes for large catalogs. Rate limiting (3 second delays between batches) is applied to prevent API overload. Please do not close this page.
             </div>
         </div>
     </div>
@@ -101,7 +101,7 @@ require(['jquery', 'Magento_Ui/js/modal/alert'], function($, alert) {
                 
                 var detailsText = 'Please wait while products are being synchronized.';
                 if (elapsed > 10) {
-                    detailsText = 'Large catalogs may take several minutes. Progress is being logged.';
+                    detailsText = 'Large catalogs may take several minutes due to rate limiting (4s delays between batches). Progress is being logged.';
                 }
                 $('#kiyoh_progress_details').html(detailsText);
             }, 1000);

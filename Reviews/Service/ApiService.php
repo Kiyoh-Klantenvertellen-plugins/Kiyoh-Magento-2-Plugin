@@ -160,6 +160,15 @@ class ApiService implements ApiServiceInterface
 
             foreach ($batches as $batchIndex => $batch) {
                 try {
+                    // Add rate limiting: wait 3 seconds between batches (except for the first batch)
+                    if ($batchIndex > 0) {
+                        $this->logger->info('Kiyoh API: Rate limiting - waiting 3 seconds before next batch', [
+                            'batch_index' => $batchIndex,
+                            'total_batches' => count($batches)
+                        ]);
+                        sleep(3);
+                    }
+
                     $batchData = [];
                     foreach ($batch as $product) {
                         try {
