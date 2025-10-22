@@ -123,7 +123,9 @@ In the **Product Synchronization** section:
   - Example: SAMPLE-001, TEST-SKU
 
 **Initial Product Sync:**
-- Click the **Bulk Product Sync** button to sync all existing products
+- Important: first input your API key and Location ID and click save.
+- Next click the **Bulk Product Sync** button to sync all existing products
+- Do not leave the page while the sync is in progress
 - This may take a few minutes depending on your catalog size
 - You only need to do this once
 

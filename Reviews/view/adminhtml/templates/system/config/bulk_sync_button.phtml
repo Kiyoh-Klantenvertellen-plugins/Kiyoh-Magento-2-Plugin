@@ -101,7 +101,7 @@ require(['jquery', 'Magento_Ui/js/modal/alert'], function($, alert) {
                 
                 var detailsText = 'Please wait while products are being synchronized.';
                 if (elapsed > 10) {
-                    detailsText = 'Large catalogs may take several minutes due to rate limiting (4s delays between batches). Progress is being logged.';
+                    detailsText = 'Large catalogs may take several minutes due to rate limiting (3s delays between batches). Progress is being logged.';
                 }
                 $('#kiyoh_progress_details').html(detailsText);
             }, 1000);
