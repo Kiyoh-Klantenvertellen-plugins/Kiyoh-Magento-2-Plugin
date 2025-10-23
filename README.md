@@ -193,7 +193,7 @@ Customers receive a personalized email in their language with:
 
 ## About This Extension
 
-**Version**: 1.0.0  
+**Version**: 1.0.1
 **Compatibility**: Magento 2.3.0+ and PHP 7.2+  
 **Developer**: Kiyoh  
 **License**: Proprietary  
