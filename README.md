@@ -95,6 +95,7 @@ In the **Review Invitations** section:
 - **Invitation Type**: Choose what to request
   - **Shop + Product Reviews**: Ask for both store and product reviews (recommended)
   - **Product Reviews Only**: Only ask for product reviews
+  - **Shop Reviews Only**: Only ask for store reviews (no product-specific reviews)
 - **Order Status Trigger**: Select when to send invitations (usually "Complete")
 - **Delay (Days)**: How many days to wait before sending (recommended: 7 days)
 
@@ -102,7 +103,20 @@ In the **Review Invitations** section:
 - **Maximum Products Per Invitation**: How many products to include (recommended: 3-5)
   - Too many products can overwhelm customers
   - Focus on the most important items
+- **Product Sort Order**: Choose how to prioritize products when multiple items are in an order
+  - **Cart Order**: Use the order items appear in the cart (default)
+  - **Price (High to Low)**: Prioritize expensive items first
+  - **Price (Low to High)**: Prioritize cheaper items first
+  - **Name (A to Z)**: Sort products alphabetically
+  - **Name (Z to A)**: Sort products reverse alphabetically
+  - **SKU (A to Z)**: Sort by product code alphabetically
+  - **SKU (Z to A)**: Sort by product code reverse alphabetically
 - **Fallback Language**: Default language if customer language can't be detected (e.g., "en" for English)
+
+**Choosing the Right Invitation Type:**
+- **Shop + Product Reviews**: Best for most stores - gives comprehensive feedback
+- **Product Reviews Only**: Good for stores focused on product quality and SEO
+- **Shop Reviews Only**: Ideal for service-based businesses or when you want to focus on overall customer experience
 
 **Optional Filters:**
 - **Exclude Customer Groups**: Skip certain customer groups (e.g., wholesale customers)
@@ -149,8 +163,10 @@ Once configured, the extension works automatically:
 Customers receive a personalized email in their language with:
 - A friendly greeting using their name
 - A link to leave a review
-- The products they purchased (with images)
+- The products they purchased (with images) - if product reviews are enabled
 - A simple rating system
+
+**Note**: If you choose "Shop Reviews Only", customers will only be asked to review your store, not specific products. This is useful if you prefer to focus on overall service quality rather than individual product feedback.
 
 ## Managing Reviews
 
