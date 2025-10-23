@@ -19,6 +19,7 @@ class SalesOrderSaveAfter implements ObserverInterface
     private const CONFIG_PATH_EXCLUDE_CUSTOMER_GROUPS = 'kiyoh_reviews/review_invitations/exclude_customer_groups';
     private const CONFIG_PATH_EXCLUDE_PRODUCT_GROUPS = 'kiyoh_reviews/review_invitations/exclude_product_groups';
     private const CONFIG_PATH_MAX_PRODUCTS = 'kiyoh_reviews/review_invitations/max_products_per_invite';
+    private const CONFIG_PATH_PRODUCT_SORT_ORDER = 'kiyoh_reviews/review_invitations/product_sort_order';
 
     /**
      * @var ScopeConfigInterface
@@ -149,6 +150,8 @@ class SalesOrderSaveAfter implements ObserverInterface
                         'order_id' => $order->getId()
                     ]);
                 }
+            } elseif ($invitationType === 'shop_only') {
+                $this->sendShopInvitation($order);
             } else {
                 // Default to shop_and_product
                 $this->sendCombinedInvitationWithRetry($order, $productCodes, $storeId);
@@ -331,18 +334,16 @@ class SalesOrderSaveAfter implements ObserverInterface
     private function extractProductCodesFromOrder(OrderInterface $order, int $storeId): array
     {
         try {
-            $productCodes = [];
             $maxProducts = (int) $this->getConfig(self::CONFIG_PATH_MAX_PRODUCTS, $storeId) ?: 10;
+            $sortOrder = $this->getConfig(self::CONFIG_PATH_PRODUCT_SORT_ORDER, $storeId) ?: 'cart_order';
             $excludedProductGroups = $this->getExcludedProductGroups($storeId);
 
+            $validProducts = [];
             $totalItems = 0;
             $excludedItems = 0;
 
+            // First pass: collect all valid products with their data
             foreach ($order->getAllVisibleItems() as $item) {
-                if (count($productCodes) >= $maxProducts) {
-                    break;
-                }
-
                 try {
                     $totalItems++;
                     $product = $item->getProduct();
@@ -361,8 +362,26 @@ class SalesOrderSaveAfter implements ObserverInterface
                     }
 
                     $productCode = $product->getSku();
-                    if ($productCode && !in_array($productCode, $productCodes)) {
-                        $productCodes[] = $productCode;
+                    if (!$productCode) {
+                        continue;
+                    }
+
+                    // Check for duplicates
+                    $isDuplicate = false;
+                    foreach ($validProducts as $validProduct) {
+                        if ($validProduct['sku'] === $productCode) {
+                            $isDuplicate = true;
+                            break;
+                        }
+                    }
+
+                    if (!$isDuplicate) {
+                        $validProducts[] = [
+                            'sku' => $productCode,
+                            'name' => $product->getName() ?: '',
+                            'price' => (float) $item->getPrice(),
+                            'cart_position' => count($validProducts) // Original cart order
+                        ];
                     }
                 } catch (\Exception $e) {
                     $this->logger->warning('Kiyoh Reviews: Error processing order item', [
@@ -373,12 +392,23 @@ class SalesOrderSaveAfter implements ObserverInterface
                 }
             }
 
-            $this->logger->debug('Kiyoh Reviews: Extracted product codes from order', [
+            // Sort products based on configuration
+            $this->sortProducts($validProducts, $sortOrder);
+
+            // Extract product codes up to the maximum limit
+            $productCodes = [];
+            for ($i = 0; $i < min(count($validProducts), $maxProducts); $i++) {
+                $productCodes[] = $validProducts[$i]['sku'];
+            }
+
+            $this->logger->debug('Kiyoh Reviews: Extracted and sorted product codes from order', [
                 'order_id' => $order->getId(),
                 'total_items' => $totalItems,
                 'excluded_items' => $excludedItems,
+                'valid_products_found' => count($validProducts),
                 'extracted_codes' => count($productCodes),
                 'max_products' => $maxProducts,
+                'sort_order' => $sortOrder,
                 'product_codes' => $productCodes,
                 'excluded_product_groups' => $excludedProductGroups
             ]);
@@ -390,6 +420,49 @@ class SalesOrderSaveAfter implements ObserverInterface
                 'exception' => $e->getMessage()
             ]);
             return [];
+        }
+    }
+
+    private function sortProducts(array &$products, string $sortOrder): void
+    {
+        switch ($sortOrder) {
+            case 'price_desc':
+                usort($products, function ($a, $b) {
+                    return $b['price'] <=> $a['price'];
+                });
+                break;
+            case 'price_asc':
+                usort($products, function ($a, $b) {
+                    return $a['price'] <=> $b['price'];
+                });
+                break;
+            case 'name_asc':
+                usort($products, function ($a, $b) {
+                    return strcasecmp($a['name'], $b['name']);
+                });
+                break;
+            case 'name_desc':
+                usort($products, function ($a, $b) {
+                    return strcasecmp($b['name'], $a['name']);
+                });
+                break;
+            case 'sku_asc':
+                usort($products, function ($a, $b) {
+                    return strcasecmp($a['sku'], $b['sku']);
+                });
+                break;
+            case 'sku_desc':
+                usort($products, function ($a, $b) {
+                    return strcasecmp($b['sku'], $a['sku']);
+                });
+                break;
+            case 'cart_order':
+            default:
+                // Keep original cart order (already sorted by cart_position)
+                usort($products, function ($a, $b) {
+                    return $a['cart_position'] <=> $b['cart_position'];
+                });
+                break;
         }
     }
 

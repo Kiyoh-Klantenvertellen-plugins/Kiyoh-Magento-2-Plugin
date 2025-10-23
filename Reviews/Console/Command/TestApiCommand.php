@@ -100,7 +100,7 @@ class TestApiCommand extends Command
                 self::OPTION_INVITE_TYPE,
                 'i',
                 InputOption::VALUE_OPTIONAL,
-                'Invitation type: "product-only" or "shop-and-product" (default: shop-and-product)',
+                'Invitation type: "product-only", "shop-only", or "shop-and-product" (default: shop-and-product)',
                 'shop-and-product'
             );
     }
@@ -157,6 +157,9 @@ class TestApiCommand extends Command
         if ($inviteType === 'product-only') {
             $output->writeln('<comment>5️⃣ Testing Product-Only Invitation...</comment>');
             $this->testProductOnlyInvitation($storeId, $testEmail, $verbose, $output);
+        } elseif ($inviteType === 'shop-only') {
+            $output->writeln('<comment>5️⃣ Testing Shop-Only Invitation...</comment>');
+            $this->testShopOnlyInvitation($storeId, $testEmail, $verbose, $output);
         } else {
             $output->writeln('<comment>5️⃣ Testing Shop + Product Invitation...</comment>');
             $this->testShopAndProductInvitation($storeId, $testEmail, $verbose, $output);
@@ -182,10 +185,13 @@ class TestApiCommand extends Command
         $output->writeln('<comment>💡 Invitation Types Tested:</comment>');
         if ($inviteType === 'product-only') {
             $output->writeln('- Product-only invitations (product_invite: true)');
-            $output->writeln('- To test shop + product invitations, use: --invite-type=shop-and-product');
+            $output->writeln('- To test other types, use: --invite-type=shop-only or --invite-type=shop-and-product');
+        } elseif ($inviteType === 'shop-only') {
+            $output->writeln('- Shop-only invitations (product_invite: false, no product codes)');
+            $output->writeln('- To test other types, use: --invite-type=product-only or --invite-type=shop-and-product');
         } else {
             $output->writeln('- Shop + product invitations (product_invite: false)');
-            $output->writeln('- To test product-only invitations, use: --invite-type=product-only');
+            $output->writeln('- To test other types, use: --invite-type=product-only or --invite-type=shop-only');
         }
         $output->writeln('');
         $output->writeln('<comment>💡 Next Steps:</comment>');
@@ -590,6 +596,31 @@ class TestApiCommand extends Command
             }
         } catch (\Exception $e) {
             $output->writeln('   <error>❌ Shop + Product invitation test failed: ' . $e->getMessage() . '</error>');
+        }
+    }
+
+    private function testShopOnlyInvitation(int $storeId, string $testEmail, bool $verbose, OutputInterface $output): void
+    {
+        try {
+            $order = $this->getTestOrder($storeId, $testEmail);
+            
+            if ($order) {
+                $output->writeln("   📧 Testing shop-only invitation for: {$order->getCustomerEmail()}");
+                $output->writeln("   📋 Order ID: " . ($order->getIncrementId() ?? 'mock-order'));
+                $output->writeln("   🎯 Type: Shop reviews only (product_invite: false, no product codes)");
+                
+                $result = $this->apiService->sendShopInvitation($order);
+                
+                if ($result) {
+                    $output->writeln('   <info>✅ Shop-only invitation sent successfully</info>');
+                } else {
+                    $output->writeln('   <comment>⚠️  Shop-only invitation failed (check logs for details)</comment>');
+                }
+            } else {
+                $output->writeln('   <comment>⚠️  No suitable order found for testing</comment>');
+            }
+        } catch (\Exception $e) {
+            $output->writeln('   <error>❌ Shop-only invitation test failed: ' . $e->getMessage() . '</error>');
         }
     }
 

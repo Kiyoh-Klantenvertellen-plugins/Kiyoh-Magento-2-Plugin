@@ -22,6 +22,7 @@ class ApiService implements ApiServiceInterface
     private const CONFIG_PATH_FALLBACK_LANGUAGE = 'kiyoh_reviews/review_invitations/fallback_language';
     private const CONFIG_PATH_DELAY_DAYS = 'kiyoh_reviews/review_invitations/delay_days';
     private const CONFIG_PATH_MAX_PRODUCTS = 'kiyoh_reviews/review_invitations/max_products_per_invite';
+    private const CONFIG_PATH_PRODUCT_SORT_ORDER = 'kiyoh_reviews/review_invitations/product_sort_order';
 
     private const TIMEOUT_INVITATION = 2;
     private const TIMEOUT_REVIEWS = 1;
@@ -91,10 +92,17 @@ class ApiService implements ApiServiceInterface
             return ['success' => false, 'error_code' => 'DISABLED', 'message' => 'Review invitations disabled'];
         }
 
+        $invitationType = $this->getConfig(self::CONFIG_PATH_INVITATION_TYPE, $storeId);
+        
+        // Handle shop_only invitations - don't include product codes
+        if ($invitationType === 'shop_only') {
+            $invitationData = $this->buildInvitationData($order, []);
+            return $this->sendInvitationRequestWithDetails($invitationData, $storeId, false);
+        }
+
         $maxProducts = (int) $this->getConfig(self::CONFIG_PATH_MAX_PRODUCTS, $storeId) ?: 10;
         $limitedProductCodes = array_slice($productCodes, 0, $maxProducts);
 
-        $invitationType = $this->getConfig(self::CONFIG_PATH_INVITATION_TYPE, $storeId);
         $productInviteFlag = ($invitationType === 'product_only'); // true = product only, false = shop + product
 
         $invitationData = $this->buildInvitationData($order, $limitedProductCodes);

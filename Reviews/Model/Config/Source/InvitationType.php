@@ -15,7 +15,8 @@ class InvitationType implements ArrayInterface
     {
         return [
             ['value' => 'shop_and_product', 'label' => __('Shop + Product Reviews')],
-            ['value' => 'product_only', 'label' => __('Product Reviews Only')]
+            ['value' => 'product_only', 'label' => __('Product Reviews Only')],
+            ['value' => 'shop_only', 'label' => __('Shop Reviews Only')]
         ];
     }
 }

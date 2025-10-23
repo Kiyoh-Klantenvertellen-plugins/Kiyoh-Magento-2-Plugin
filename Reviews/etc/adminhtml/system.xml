@@ -52,7 +52,7 @@
                 <field id="invitation_type" translate="label" type="select" sortOrder="15" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Invitation Type</label>
                     <source_model>Kiyoh\Reviews\Model\Config\Source\InvitationType</source_model>
-                    <comment>Choose whether to send shop + product reviews or product reviews only (sets product_invite API flag)</comment>
+                    <comment>Choose invitation type: Shop + Product (both reviews), Product Only (product reviews only), or Shop Only (shop reviews only)</comment>
                     <depends>
                         <field id="enabled">1</field>
                     </depends>
@@ -77,6 +77,14 @@
                     <label>Maximum Products Per Invitation</label>
                     <validate>validate-number validate-greater-than-zero</validate>
                     <comment>Maximum number of products to include in each invitation (recommended: 3-5, API supports up to 10)</comment>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+                <field id="product_sort_order" translate="label" type="select" sortOrder="37" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Product Sort Order</label>
+                    <source_model>Kiyoh\Reviews\Model\Config\Source\ProductSortOrder</source_model>
+                    <comment>How to sort products when selecting which ones to include in the invitation (when order has more products than the maximum limit)</comment>
                     <depends>
                         <field id="enabled">1</field>
                     </depends>
