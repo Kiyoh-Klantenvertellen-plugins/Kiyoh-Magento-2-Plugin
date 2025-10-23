@@ -361,7 +361,10 @@ class SalesOrderSaveAfter implements ObserverInterface
                         continue;
                     }
 
-                    $productCode = $product->getSku();
+                    // Use the actual purchased product SKU from the order item, not the loaded product
+                    // This ensures we get the specific variant that was purchased (e.g., WT09-M-Yellow)
+                    // rather than potentially getting the parent product (e.g., WT09)
+                    $productCode = $item->getSku() ?: $product->getSku();
                     if (!$productCode) {
                         continue;
                     }
@@ -378,9 +381,11 @@ class SalesOrderSaveAfter implements ObserverInterface
                     if (!$isDuplicate) {
                         $validProducts[] = [
                             'sku' => $productCode,
-                            'name' => $product->getName() ?: '',
+                            'name' => $item->getName() ?: $product->getName() ?: '',
                             'price' => (float) $item->getPrice(),
-                            'cart_position' => count($validProducts) // Original cart order
+                            'cart_position' => count($validProducts), // Original cart order
+                            'item_id' => $item->getId(),
+                            'product_type' => $item->getProductType()
                         ];
                     }
                 } catch (\Exception $e) {
@@ -410,7 +415,15 @@ class SalesOrderSaveAfter implements ObserverInterface
                 'max_products' => $maxProducts,
                 'sort_order' => $sortOrder,
                 'product_codes' => $productCodes,
-                'excluded_product_groups' => $excludedProductGroups
+                'excluded_product_groups' => $excludedProductGroups,
+                'detailed_products' => array_map(function($p) {
+                    return [
+                        'sku' => $p['sku'],
+                        'name' => $p['name'],
+                        'item_id' => $p['item_id'],
+                        'product_type' => $p['product_type']
+                    ];
+                }, $validProducts)
             ]);
 
             return $productCodes;
@@ -472,6 +485,7 @@ class SalesOrderSaveAfter implements ObserverInterface
             $maxProducts = (int) $this->getConfig(self::CONFIG_PATH_MAX_PRODUCTS, $storeId) ?: 10;
             $syncedCount = 0;
             $failedCount = 0;
+            $excludedProductGroups = $this->getExcludedProductGroups($storeId);
 
             $this->logger->info('Kiyoh Reviews: Starting product sync for order', [
                 'order_id' => $order->getId(),
@@ -493,25 +507,53 @@ class SalesOrderSaveAfter implements ObserverInterface
                         continue;
                     }
 
+                    // Skip excluded product groups
+                    if ($this->isProductGroupExcluded($product, $excludedProductGroups)) {
+                        $this->logger->debug('Kiyoh Reviews: Product excluded by attribute set during sync', [
+                            'order_id' => $order->getId(),
+                            'product_sku' => $product->getSku(),
+                            'attribute_set_id' => $product->getAttributeSetId()
+                        ]);
+                        continue;
+                    }
+
+                    // Use the actual purchased product SKU from the order item
+                    $actualSku = $item->getSku() ?: $product->getSku();
+                    
                     $this->logger->debug('Kiyoh Reviews: Syncing product', [
                         'order_id' => $order->getId(),
+                        'item_sku' => $item->getSku(),
                         'product_sku' => $product->getSku(),
-                        'product_name' => $product->getName()
+                        'actual_sku' => $actualSku,
+                        'product_name' => $product->getName(),
+                        'item_name' => $item->getName()
                     ]);
 
-                    $success = $this->apiService->syncProduct($product);
+                    // If the item SKU differs from product SKU, we need to ensure we sync the correct variant
+                    // For derivative products, we want to sync using the specific variant SKU
+                    if ($actualSku !== $product->getSku()) {
+                        // Create a temporary product-like object with the correct SKU for syncing
+                        $productForSync = clone $product;
+                        $productForSync->setSku($actualSku);
+                        $productForSync->setName($item->getName() ?: $product->getName());
+                        $success = $this->apiService->syncProduct($productForSync);
+                    } else {
+                        $success = $this->apiService->syncProduct($product);
+                    }
                     
                     if ($success) {
                         $syncedCount++;
                         $this->logger->info('Kiyoh Reviews: Product synced successfully', [
                             'order_id' => $order->getId(),
-                            'product_sku' => $product->getSku()
+                            'synced_sku' => $actualSku,
+                            'original_product_sku' => $product->getSku()
                         ]);
                     } else {
                         $failedCount++;
                         $this->logger->warning('Kiyoh Reviews: Product sync failed', [
                             'order_id' => $order->getId(),
-                            'product_sku' => $product->getSku()
+                            'synced_sku' => $actualSku,
+                            'original_product_sku' => $product->getSku()
                         ]);
                     }
                 } catch (\Exception $e) {
