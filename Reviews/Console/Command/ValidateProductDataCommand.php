@@ -2,6 +2,7 @@
 
 namespace Kiyoh\Reviews\Console\Command;
 
+use Magento\Catalog\Model\Product\Attribute\Source\Status;
 use Magento\Framework\Console\Cli;
 use Magento\Framework\App\State;
 use Magento\Framework\App\Area;
@@ -179,12 +180,12 @@ class ValidateProductDataCommand extends Command
             'product_name' => $name,
             'source_url' => $url ?: 'https://example.com/product/' . urlencode(strtolower($sku)),
             'image_url' => $image ? $product->getMediaConfig()->getMediaUrl($image) : 'https://via.placeholder.com/300x300.png',
-            'active' => true
+            'active' => ((int) $product->getStatus() === Status::STATUS_ENABLED)
         ];
         
-        if ($sku) $apiData['skus'] = [$sku];
-        if ($gtin) $apiData['gtins'] = [$gtin];
-        if ($mpn) $apiData['mpns'] = [$mpn];
+        if ($sku) $apiData['skus'] = $sku;
+        if ($gtin) $apiData['gtins'] = $gtin;
+        if ($mpn) $apiData['mpns'] = $mpn;
         if ($brand) $apiData['cluster_code'] = $brand;
         
         $output->writeln("   📤 API Payload:");

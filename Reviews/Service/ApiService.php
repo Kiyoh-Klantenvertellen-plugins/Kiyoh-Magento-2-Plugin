@@ -3,6 +3,7 @@
 namespace Kiyoh\Reviews\Service;
 
 use Kiyoh\Reviews\Api\ApiServiceInterface;
+use Magento\Catalog\Model\Product\Attribute\Source\Status;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\Encryption\EncryptorInterface;
 use Magento\Framework\Locale\Resolver as LocaleResolver;
@@ -412,20 +413,20 @@ class ApiService implements ApiServiceInterface
                 'product_name' => (string) $productName,
                 'source_url' => $productUrl,
                 'image_url' => $imageUrl,
-                'active' => true
+                'active' => ((int) $product->getStatus() === Status::STATUS_ENABLED)
             ];
 
             // Only add optional fields if they exist and are not empty
-            $sku = $product->getSku();
-            if ($sku && $sku !== $productCode) {
-                $data['skus'] = [(string) $sku];
+            $sku = $this->normalizeProductFieldValue($product->getSku());
+            if ($sku) {
+                $data['skus'] = $sku;
             }
 
-            // Only add GTIN if it's a valid format (13 digits)
+            // Only add GTIN if it exists and is not empty
             try {
-                $gtin = $product->getData('gtin');
-                if ($gtin && preg_match('/^\d{13}$/', $gtin)) {
-                    $data['gtins'] = [(string) $gtin];
+                $gtin = $this->normalizeProductFieldValue($product->getData('gtin'));
+                if ($gtin) {
+                    $data['gtins'] = $gtin;
                 }
             } catch (\Exception $e) {
                 // Attribute may not exist, skip silently
@@ -433,9 +434,9 @@ class ApiService implements ApiServiceInterface
 
             // Only add MPN if it exists and is not empty
             try {
-                $mpn = $product->getData('mpn');
-                if ($mpn && trim($mpn) !== '') {
-                    $data['mpns'] = [(string) $mpn];
+                $mpn = $this->normalizeProductFieldValue($product->getData('mpn'));
+                if ($mpn) {
+                    $data['mpns'] = $mpn;
                 }
             } catch (\Exception $e) {
                 // Attribute may not exist, skip silently
@@ -459,6 +460,21 @@ class ApiService implements ApiServiceInterface
             ]);
             throw $e;
         }
+    }
+
+    private function normalizeProductFieldValue($value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        if (is_array($value)) {
+            $value = implode(',', array_filter(array_map('strval', $value), 'strlen'));
+        }
+
+        $value = trim((string) $value);
+
+        return $value === '' ? null : $value;
     }
 
     private function sendInvitationRequest(array $data, int $storeId, bool $productInvite): bool

@@ -74,7 +74,7 @@ class ProductSyncService
             $this->logger->info('Kiyoh Product Sync: Starting bulk product sync', ['store_id' => $storeId]);
 
             $collection = $this->productCollectionFactory->create();
-            $collection->addAttributeToSelect(['name', 'sku', 'image', 'url_key', 'gtin', 'mpn', 'brand']);
+            $collection->addAttributeToSelect(['name', 'sku', 'image', 'url_key', 'status', 'gtin', 'mpn', 'brand']);
             
             if ($storeId > 0) {
                 $collection->addStoreFilter($storeId);
