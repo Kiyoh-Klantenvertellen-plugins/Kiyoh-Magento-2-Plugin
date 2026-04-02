@@ -25,9 +25,9 @@ class ApiService implements ApiServiceInterface
     private const CONFIG_PATH_MAX_PRODUCTS = 'kiyoh_reviews/review_invitations/max_products_per_invite';
     private const CONFIG_PATH_PRODUCT_SORT_ORDER = 'kiyoh_reviews/review_invitations/product_sort_order';
 
-    private const TIMEOUT_INVITATION = 2;
-    private const TIMEOUT_REVIEWS = 1;
-    private const BULK_SYNC_MAX = 200;
+    private const TIMEOUT_INVITATION = 4;
+    private const TIMEOUT_REVIEWS = 2;
+    private const BULK_SYNC_MAX = 100;
 
     /**
      * @var ScopeConfigInterface
