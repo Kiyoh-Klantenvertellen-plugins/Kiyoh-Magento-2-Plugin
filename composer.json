@@ -2,7 +2,7 @@
     "name": "kiyoh/reviews",
     "description": "Kiyoh Reviews integration for Magento 2 - Shop and Product Reviews",
     "type": "magento2-module",
-    "version": "1.0.0",
+    "version": "v1.0.2",
     "license": "proprietary",
     "authors": [
         {
