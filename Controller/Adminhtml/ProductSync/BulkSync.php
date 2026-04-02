@@ -2,32 +2,32 @@
 
 namespace Kiyoh\Reviews\Controller\Adminhtml\ProductSync;
 
+use Kiyoh\Reviews\Service\ProductSyncService;
 use Magento\Backend\App\Action;
 use Magento\Backend\App\Action\Context;
 use Magento\Framework\Controller\Result\JsonFactory;
 use Magento\Store\Model\StoreManagerInterface;
-use Kiyoh\Reviews\Service\ProductSyncService;
 use Psr\Log\LoggerInterface;
 
 class BulkSync extends Action
 {
-    const ADMIN_RESOURCE = 'Kiyoh_Reviews::config';
+    public const ADMIN_RESOURCE = 'Kiyoh_Reviews::config';
 
     /**
      * @var JsonFactory
      */
     private $resultJsonFactory;
-    
+
     /**
      * @var StoreManagerInterface
      */
     private $storeManager;
-    
+
     /**
      * @var ProductSyncService
      */
     private $productSyncService;
-    
+
     /**
      * @var LoggerInterface
      */
@@ -50,10 +50,10 @@ class BulkSync extends Action
     public function execute()
     {
         $result = $this->resultJsonFactory->create();
-        
+
         try {
             $storeId = (int) $this->getRequest()->getParam('store_id', 0);
-            
+
             if ($storeId > 0) {
                 $store = $this->storeManager->getStore($storeId);
                 $storeName = $store->getName();
@@ -78,11 +78,11 @@ class BulkSync extends Action
                 'total' => 0
             ]);
 
-            $progressCallback = function($progress) use ($session) {
-                $percentage = $progress['total'] > 0 
-                    ? round(($progress['synced'] + $progress['failed']) / $progress['total'] * 100) 
+            $progressCallback = function ($progress) use ($session) {
+                $percentage = $progress['total'] > 0
+                    ? round(($progress['synced'] + $progress['failed']) / $progress['total'] * 100)
                     : 0;
-                
+
                 $session->setData('kiyoh_sync_progress', [
                     'status' => 'running',
                     'percentage' => $percentage,
@@ -94,7 +94,7 @@ class BulkSync extends Action
                     'batch_success' => $progress['batch_success'],
                     'batch_failed' => $progress['batch_failed']
                 ]);
-                
+
                 $this->logger->info('Kiyoh Product Sync: Progress update', [
                     'batch' => $progress['current_batch'],
                     'total_batches' => $progress['total_batches'],
@@ -148,7 +148,6 @@ class BulkSync extends Action
 
                 $this->messageManager->addErrorMessage($errorMessage);
             }
-
         } catch (\Exception $e) {
             $this->logger->error('Kiyoh Admin: Bulk sync exception', [
                 'exception' => $e->getMessage(),

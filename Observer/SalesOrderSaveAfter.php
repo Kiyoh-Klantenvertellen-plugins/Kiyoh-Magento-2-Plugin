@@ -16,6 +16,7 @@ class SalesOrderSaveAfter implements ObserverInterface
     private const CONFIG_PATH_INVITATIONS_ENABLED = 'kiyoh_reviews/review_invitations/enabled';
     private const CONFIG_PATH_INVITATION_TYPE = 'kiyoh_reviews/review_invitations/invitation_type';
     private const CONFIG_PATH_ORDER_STATUS_TRIGGER = 'kiyoh_reviews/review_invitations/order_status_trigger';
+    private const CONFIG_PATH_PRODUCT_SYNC_ENABLED = 'kiyoh_reviews/product_sync/enabled';
     private const CONFIG_PATH_EXCLUDE_CUSTOMER_GROUPS = 'kiyoh_reviews/review_invitations/exclude_customer_groups';
     private const CONFIG_PATH_EXCLUDE_PRODUCT_GROUPS = 'kiyoh_reviews/review_invitations/exclude_product_groups';
     private const CONFIG_PATH_MAX_PRODUCTS = 'kiyoh_reviews/review_invitations/max_products_per_invite';
@@ -186,6 +187,8 @@ class SalesOrderSaveAfter implements ObserverInterface
             return;
         }
 
+        $this->syncOrderProductsBeforeInvitation($order, $storeId, $productCodes);
+
         $this->logger->info('Kiyoh Reviews: Attempting combined shop and product invitation', [
             'order_id' => $order->getId(),
             'product_count' => count($productCodes)
@@ -268,6 +271,8 @@ class SalesOrderSaveAfter implements ObserverInterface
 
     private function sendProductInvitationWithRetry(OrderInterface $order, array $productCodes, int $storeId): void
     {
+        $this->syncOrderProductsBeforeInvitation($order, $storeId, $productCodes);
+
         $this->logger->info('Kiyoh Reviews: Attempting product invitation', [
             'order_id' => $order->getId(),
             'product_count' => count($productCodes)
@@ -580,6 +585,28 @@ class SalesOrderSaveAfter implements ObserverInterface
         }
     }
 
+    private function syncOrderProductsBeforeInvitation(OrderInterface $order, int $storeId, array $productCodes): void
+    {
+        if (empty($productCodes)) {
+            return;
+        }
+
+        if (!$this->isProductSyncEnabled($storeId)) {
+            $this->logger->info('Kiyoh Reviews: Skipping order product sync before invitation', [
+                'order_id' => $order->getId(),
+                'reason' => 'Product sync disabled'
+            ]);
+            return;
+        }
+
+        $this->logger->info('Kiyoh Reviews: Syncing order products before invitation', [
+            'order_id' => $order->getId(),
+            'product_codes' => $productCodes
+        ]);
+
+        $this->syncOrderProducts($order, $storeId);
+    }
+
     private function isOrderStatusTriggered(OrderInterface $order, int $storeId): bool
     {
         $triggerStatuses = $this->getConfig(self::CONFIG_PATH_ORDER_STATUS_TRIGGER, $storeId);
@@ -629,6 +656,11 @@ class SalesOrderSaveAfter implements ObserverInterface
     private function isInvitationsEnabled(int $storeId): bool
     {
         return (bool) $this->getConfig(self::CONFIG_PATH_INVITATIONS_ENABLED, $storeId);
+    }
+
+    private function isProductSyncEnabled(int $storeId): bool
+    {
+        return (bool) $this->getConfig(self::CONFIG_PATH_PRODUCT_SYNC_ENABLED, $storeId);
     }
 
     private function shouldSyncProductsForError(string $errorCode): bool

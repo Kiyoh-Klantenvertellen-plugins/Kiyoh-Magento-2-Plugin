@@ -56,12 +56,18 @@ Keep these credentials handy for the next step.
 
 Your developer or technical team will install the extension. The installation process typically takes 5-10 minutes.
 
-**What your technical team needs to do:**
-1. Install by extracting the zip to your magento 2 `app/code` directory
+**Recommended Composer installation:**
+1. Run `composer require kiyoh/reviews`
+2. Run `php bin/magento setup:upgrade`
+3. If the store is in production mode, run `php bin/magento setup:di:compile`
+4. Clear cache with `php bin/magento cache:flush`
+
+**Manual installation from a zip archive:**
+1. Extract the module to `app/code/Kiyoh/Reviews`
 2. Enable the module with the `php bin/magento module:enable Kiyoh_Reviews` command
-3. Run Magento upgrade with `php bin/magento setup:upgrade` command
-4. Run compilation command with `php bin/magento setup:di:compile` command
-5. Clear cache with `php bin/magento cache:flush` command
+3. Run `php bin/magento setup:upgrade`
+4. If the store is in production mode, run `php bin/magento setup:di:compile`
+5. Clear cache with `php bin/magento cache:flush`
 
 Once installed, you'll see a new "Kiyoh" section in your Magento admin panel under **Stores > Configuration**.
 
@@ -193,7 +199,7 @@ Customers receive a personalized email in their language with:
 
 ## About This Extension
 
-**Version**: 1.0.1  
+**Versioning**: Composer/Packagist releases follow Git tags  
 **Compatibility**: Magento 2.3.0+ and PHP 7.2+  
 **Developer**: Kiyoh  
 **License**: Proprietary  
