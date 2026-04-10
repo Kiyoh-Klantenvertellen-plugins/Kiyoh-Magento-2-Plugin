@@ -133,7 +133,7 @@ class BulkSync extends Action
                 $errorMessage = sprintf(
                     'Bulk sync failed for %s: %s',
                     $storeName,
-                    $syncResult['message']
+                    $syncResult['message'] ?? 'Unknown error'
                 );
 
                 $result->setData([
@@ -175,24 +175,37 @@ class BulkSync extends Action
         $stores = $this->storeManager->getStores();
         $totalResult = [
             'success' => true,
+            'message' => '',
             'synced' => 0,
             'failed' => 0,
             'errors' => [],
-            'total' => 0
+            'total' => 0,
+            'total_batches' => 0
         ];
+
+        $skippedStores = [];
 
         foreach ($stores as $store) {
             $storeId = (int) $store->getId();
             $result = $this->productSyncService->syncAllProducts($storeId, $progressCallback);
 
+            if (!$result['success']) {
+                $skippedStores[] = $store->getName() . ' (' . ($result['message'] ?? 'Unknown error') . ')';
+
+                $this->logger->info('Kiyoh Admin: Store sync skipped/failed, continuing with other stores', [
+                    'store_id' => $storeId,
+                    'store_name' => $store->getName(),
+                    'reason' => $result['message'] ?? 'Unknown error'
+                ]);
+
+                continue;
+            }
+
             $totalResult['synced'] += $result['synced'];
             $totalResult['failed'] += $result['failed'];
             $totalResult['total'] += $result['total'] ?? 0;
+            $totalResult['total_batches'] += $result['total_batches'] ?? 0;
             $totalResult['errors'] = array_merge($totalResult['errors'], $result['errors']);
-
-            if (!$result['success']) {
-                $totalResult['success'] = false;
-            }
 
             $this->logger->info('Kiyoh Admin: Store sync completed', [
                 'store_id' => $storeId,
@@ -200,6 +213,25 @@ class BulkSync extends Action
                 'synced' => $result['synced'],
                 'failed' => $result['failed']
             ]);
+        }
+
+        if (!empty($skippedStores)) {
+            $totalResult['message'] = sprintf(
+                '%d synced, %d failed. Skipped stores: %s',
+                $totalResult['synced'],
+                $totalResult['failed'],
+                implode(', ', $skippedStores)
+            );
+
+            if ($totalResult['synced'] === 0 && $totalResult['total'] === 0) {
+                $totalResult['success'] = false;
+            }
+        } else {
+            $totalResult['message'] = sprintf(
+                'All stores synced: %d synced, %d failed',
+                $totalResult['synced'],
+                $totalResult['failed']
+            );
         }
 
         return $totalResult;
