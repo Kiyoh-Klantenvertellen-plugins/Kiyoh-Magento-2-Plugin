@@ -186,7 +186,7 @@ class ValidateProductDataCommand extends Command
         if ($sku) $apiData['skus'] = $sku;
         if ($gtin) $apiData['gtins'] = $gtin;
         if ($mpn) $apiData['mpns'] = $mpn;
-        if ($brand) $apiData['cluster_code'] = $brand;
+        if ($brand) $apiData['brand_name'] = $brand;
         
         $output->writeln("   📤 API Payload:");
         $output->writeln("   " . json_encode($apiData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));

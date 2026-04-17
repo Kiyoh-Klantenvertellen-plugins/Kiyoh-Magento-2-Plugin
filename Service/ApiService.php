@@ -446,7 +446,7 @@ class ApiService implements ApiServiceInterface
             try {
                 $brand = $product->getData('brand');
                 if ($brand && trim($brand) !== '') {
-                    $data['cluster_code'] = (string) $brand;
+                    $data['brand_name'] = (string) $brand;
                 }
             } catch (\Exception $e) {
                 // Attribute may not exist, skip silently
