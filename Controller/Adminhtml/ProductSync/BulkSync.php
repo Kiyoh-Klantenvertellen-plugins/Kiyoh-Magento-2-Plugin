@@ -222,10 +222,6 @@ class BulkSync extends Action
                 $totalResult['failed'],
                 implode(', ', $skippedStores)
             );
-
-            if ($totalResult['synced'] === 0 && $totalResult['total'] === 0) {
-                $totalResult['success'] = false;
-            }
         } else {
             $totalResult['message'] = sprintf(
                 'All stores synced: %d synced, %d failed',
