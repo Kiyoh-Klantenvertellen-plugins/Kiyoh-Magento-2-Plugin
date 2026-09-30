@@ -3,6 +3,7 @@
 namespace Kiyoh\Reviews\Service;
 
 use Kiyoh\Reviews\Api\ApiServiceInterface;
+use Kiyoh\Reviews\Helper\ProductCode;
 use Magento\Catalog\Model\Product\Attribute\Source\Status;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\Encryption\EncryptorInterface;
@@ -27,7 +28,7 @@ class ApiService implements ApiServiceInterface
 
     private const TIMEOUT_INVITATION = 4;
     private const TIMEOUT_REVIEWS = 2;
-    private const BULK_SYNC_MAX = 100;
+    private const BULK_SYNC_MAX = 200;
 
     /**
      * @var ScopeConfigInterface
@@ -49,16 +50,23 @@ class ApiService implements ApiServiceInterface
      */
     private $localeResolver;
 
+    /**
+     * @var ProductCode
+     */
+    private $productCodeHelper;
+
     public function __construct(
         ScopeConfigInterface $scopeConfig,
         EncryptorInterface $encryptor,
         LoggerInterface $logger,
-        LocaleResolver $localeResolver
+        LocaleResolver $localeResolver,
+        ProductCode $productCodeHelper
     ) {
         $this->scopeConfig = $scopeConfig;
         $this->encryptor = $encryptor;
         $this->logger = $logger;
         $this->localeResolver = $localeResolver;
+        $this->productCodeHelper = $productCodeHelper;
     }
 
     public function sendShopInvitation(OrderInterface $order): bool
@@ -366,7 +374,8 @@ class ApiService implements ApiServiceInterface
             $storeId = $product->getStoreId() ?: 0;
             $locationId = $this->getConfig(self::CONFIG_PATH_LOCATION_ID, $storeId);
 
-            $productCode = $product->getSku();
+            $rawSku = $product->getSku();
+            $productCode = $this->productCodeHelper->sanitize($rawSku !== null ? (string) $rawSku : '');
             $productName = $product->getName();
             
             if (!$productCode || !$productName) {
@@ -417,39 +426,23 @@ class ApiService implements ApiServiceInterface
             ];
 
             // Only add optional fields if they exist and are not empty
-            $sku = $this->normalizeProductFieldValue($product->getSku());
-            if ($sku) {
-                $data['skus'] = $sku;
+            if ($productCode) {
+                $data['skus'] = $productCode;
             }
 
-            // Only add GTIN if it exists and is not empty
-            try {
-                $gtin = $this->normalizeProductFieldValue($product->getData('gtin'));
-                if ($gtin) {
-                    $data['gtins'] = $gtin;
-                }
-            } catch (\Exception $e) {
-                // Attribute may not exist, skip silently
+            $gtin = $this->resolveProductAttributeValue($product, ['gtin', 'ean', 'ean13', 'upc']);
+            if ($gtin) {
+                $data['gtins'] = $gtin;
             }
 
-            // Only add MPN if it exists and is not empty
-            try {
-                $mpn = $this->normalizeProductFieldValue($product->getData('mpn'));
-                if ($mpn) {
-                    $data['mpns'] = $mpn;
-                }
-            } catch (\Exception $e) {
-                // Attribute may not exist, skip silently
+            $mpn = $this->resolveProductAttributeValue($product, ['mpn']);
+            if ($mpn) {
+                $data['mpns'] = $mpn;
             }
 
-            // Only add brand/cluster if it exists
-            try {
-                $brand = $product->getData('brand');
-                if ($brand && trim($brand) !== '') {
-                    $data['brand_name'] = (string) $brand;
-                }
-            } catch (\Exception $e) {
-                // Attribute may not exist, skip silently
+            $brand = $this->resolveProductAttributeValue($product, ['brand', 'manufacturer']);
+            if ($brand) {
+                $data['brand_name'] = $brand;
             }
 
             return $data;
@@ -460,6 +453,32 @@ class ApiService implements ApiServiceInterface
             ]);
             throw $e;
         }
+    }
+
+    /**
+     * Try common Magento attribute codes until a non-empty value is found.
+     */
+    private function resolveProductAttributeValue(ProductInterface $product, array $attributeCodes): ?string
+    {
+        foreach ($attributeCodes as $attributeCode) {
+            try {
+                $value = $this->normalizeProductFieldValue($product->getData($attributeCode));
+                if ($value) {
+                    // manufacturer is often an option ID — prefer text label when available
+                    if ($attributeCode === 'manufacturer' && is_numeric($value) && method_exists($product, 'getAttributeText')) {
+                        $label = $product->getAttributeText('manufacturer');
+                        if ($label) {
+                            return is_array($label) ? implode(', ', $label) : (string) $label;
+                        }
+                    }
+                    return $value;
+                }
+            } catch (\Exception $e) {
+                // Attribute may not exist, try next
+            }
+        }
+
+        return null;
     }
 
     private function normalizeProductFieldValue($value): ?string

@@ -9,6 +9,7 @@ use Magento\Store\Model\ScopeInterface;
 use Magento\Sales\Api\Data\OrderInterface;
 use Magento\Customer\Api\GroupRepositoryInterface;
 use Kiyoh\Reviews\Api\ApiServiceInterface;
+use Kiyoh\Reviews\Helper\ProductCode;
 use Psr\Log\LoggerInterface;
 
 class SalesOrderSaveAfter implements ObserverInterface
@@ -36,6 +37,11 @@ class SalesOrderSaveAfter implements ObserverInterface
      * @var GroupRepositoryInterface
      */
     private $groupRepository;
+
+    /**
+     * @var ProductCode
+     */
+    private $productCodeHelper;
     
     /**
      * @var LoggerInterface
@@ -46,11 +52,13 @@ class SalesOrderSaveAfter implements ObserverInterface
         ScopeConfigInterface $scopeConfig,
         ApiServiceInterface $apiService,
         GroupRepositoryInterface $groupRepository,
+        ProductCode $productCodeHelper,
         LoggerInterface $logger
     ) {
         $this->scopeConfig = $scopeConfig;
         $this->apiService = $apiService;
         $this->groupRepository = $groupRepository;
+        $this->productCodeHelper = $productCodeHelper;
         $this->logger = $logger;
     }
 
@@ -366,10 +374,8 @@ class SalesOrderSaveAfter implements ObserverInterface
                         continue;
                     }
 
-                    // Use the actual purchased product SKU from the order item, not the loaded product
-                    // This ensures we get the specific variant that was purchased (e.g., WT09-M-Yellow)
-                    // rather than potentially getting the parent product (e.g., WT09)
-                    $productCode = $item->getSku() ?: $product->getSku();
+                    // Configurable → child SKU; custom options that append SKUs → catalog/simple SKU
+                    $productCode = $this->productCodeHelper->resolveFromOrderItem($item, $product);
                     if (!$productCode) {
                         continue;
                     }
@@ -522,8 +528,8 @@ class SalesOrderSaveAfter implements ObserverInterface
                         continue;
                     }
 
-                    // Use the actual purchased product SKU from the order item
-                    $actualSku = $item->getSku() ?: $product->getSku();
+                    // Configurable → child SKU; custom options that append SKUs → catalog/simple SKU
+                    $actualSku = $this->productCodeHelper->resolveFromOrderItem($item, $product);
                     
                     $this->logger->debug('Kiyoh Reviews: Syncing product', [
                         'order_id' => $order->getId(),
@@ -534,17 +540,15 @@ class SalesOrderSaveAfter implements ObserverInterface
                         'item_name' => $item->getName()
                     ]);
 
-                    // If the item SKU differs from product SKU, we need to ensure we sync the correct variant
-                    // For derivative products, we want to sync using the specific variant SKU
-                    if ($actualSku !== $product->getSku()) {
-                        // Create a temporary product-like object with the correct SKU for syncing
-                        $productForSync = clone $product;
-                        $productForSync->setSku($actualSku);
-                        $productForSync->setName($item->getName() ?: $product->getName());
-                        $success = $this->apiService->syncProduct($productForSync);
-                    } else {
-                        $success = $this->apiService->syncProduct($product);
+                    $productForSync = clone $product;
+                    if ($storeId > 0) {
+                        $productForSync->setStoreId($storeId);
                     }
+                    $productForSync->setSku($actualSku);
+                    if ($actualSku !== $this->productCodeHelper->sanitize((string) $product->getSku())) {
+                        $productForSync->setName($item->getName() ?: $product->getName());
+                    }
+                    $success = $this->apiService->syncProduct($productForSync);
                     
                     if ($success) {
                         $syncedCount++;

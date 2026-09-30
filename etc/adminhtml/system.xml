@@ -134,7 +134,7 @@
                 <field id="excluded_product_types" translate="label" type="multiselect" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Excluded Product Types</label>
                     <source_model>Kiyoh\Reviews\Model\Config\Source\ExcludableProductType</source_model>
-                    <comment>Product types that will not be synchronized (leave empty to sync all product types)</comment>
+                    <comment>Product types that will not be synchronized (leave empty to sync all product types). Configurable parents are always excluded — invitations use the purchased child SKU.</comment>
                     <can_be_empty>1</can_be_empty>
                     <depends>
                         <field id="enabled">1</field>

@@ -8,6 +8,7 @@ use Magento\Framework\App\State;
 use Magento\Framework\App\Area;
 use Magento\Catalog\Api\ProductRepositoryInterface;
 use Magento\Framework\Api\SearchCriteriaBuilder;
+use Kiyoh\Reviews\Helper\ProductCode;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -32,15 +33,22 @@ class ValidateProductDataCommand extends Command
      */
     private $searchCriteriaBuilder;
 
+    /**
+     * @var ProductCode
+     */
+    private $productCodeHelper;
+
     public function __construct(
         State $appState,
         ProductRepositoryInterface $productRepository,
         SearchCriteriaBuilder $searchCriteriaBuilder,
+        ProductCode $productCodeHelper,
         string $name = null
     ) {
         $this->appState = $appState;
         $this->productRepository = $productRepository;
         $this->searchCriteriaBuilder = $searchCriteriaBuilder;
+        $this->productCodeHelper = $productCodeHelper;
         parent::__construct($name);
     }
 
@@ -115,11 +123,12 @@ class ValidateProductDataCommand extends Command
         $warnings = [];
         
         // Product Code (SKU)
-        $sku = $product->getSku();
+        $rawSku = $product->getSku();
+        $sku = $this->productCodeHelper->sanitize($rawSku !== null ? (string) $rawSku : '');
         if (empty($sku)) {
             $issues[] = "Missing SKU";
         } else {
-            $output->writeln("   ✅ Product Code: {$sku}");
+            $output->writeln("   ✅ Product Code: {$sku}" . ($sku !== (string) $rawSku ? " (sanitized from {$rawSku})" : ''));
         }
         
         // Product Name
@@ -162,10 +171,10 @@ class ValidateProductDataCommand extends Command
             }
         }
         
-        // Optional fields
-        $gtin = $product->getData('gtin');
-        $mpn = $product->getData('mpn');
-        $brand = $product->getData('brand');
+        // Optional fields (same fallbacks as ApiService)
+        $gtin = $this->firstProductAttribute($product, ['gtin', 'ean', 'ean13', 'upc']);
+        $mpn = $this->firstProductAttribute($product, ['mpn']);
+        $brand = $this->firstProductAttribute($product, ['brand', 'manufacturer']);
         
         $output->writeln("   📋 Optional Fields:");
         $output->writeln("      GTIN: " . ($gtin ?: 'Not set'));
@@ -201,5 +210,34 @@ class ValidateProductDataCommand extends Command
         if (empty($issues) && empty($warnings)) {
             $output->writeln("   <info>✅ Product data looks good!</info>");
         }
+    }
+
+    private function firstProductAttribute($product, array $attributeCodes): ?string
+    {
+        foreach ($attributeCodes as $attributeCode) {
+            try {
+                $value = $product->getData($attributeCode);
+                if ($value === null || $value === '') {
+                    continue;
+                }
+                if ($attributeCode === 'manufacturer' && is_numeric($value) && method_exists($product, 'getAttributeText')) {
+                    $label = $product->getAttributeText('manufacturer');
+                    if ($label) {
+                        return is_array($label) ? implode(', ', $label) : (string) $label;
+                    }
+                }
+                if (is_array($value)) {
+                    $value = implode(',', array_filter(array_map('strval', $value), 'strlen'));
+                }
+                $value = trim((string) $value);
+                if ($value !== '') {
+                    return $value;
+                }
+            } catch (\Exception $e) {
+                // try next
+            }
+        }
+
+        return null;
     }
 }

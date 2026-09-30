@@ -22,7 +22,7 @@
             <product_sync>
                 <enabled>0</enabled>
                 <auto_sync_enabled>1</auto_sync_enabled>
-                <excluded_product_types></excluded_product_types>
+                <excluded_product_types>configurable</excluded_product_types>
                 <excluded_product_codes></excluded_product_codes>
                 <initial_sync_done>0</initial_sync_done>
             </product_sync>

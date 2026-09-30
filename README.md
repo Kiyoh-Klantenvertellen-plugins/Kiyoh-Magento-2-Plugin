@@ -132,17 +132,55 @@ In the **Product Synchronization** section:
   - This automatically updates product information when you edit products
 - **Excluded Product Types**: Select product types you don't want to sync (optional)
   - Example: Virtual products, downloadable products
+  - Configurable parents are always excluded; invitations use the purchased child/variant SKU
 - **Excluded Product Codes**: Enter specific SKUs to exclude (optional)
   - Example: SAMPLE-001, TEST-SKU
 
 **Initial Product Sync:**
 - Important: first input your API key and Location ID and click save.
-- Next click the **Bulk Product Sync** button to sync all existing products
+- Switch the scope dropdown to each **store view** that should sync, save credentials, then run **Bulk Product Sync** for that store
 - Do not leave the page while the sync is in progress
 - This may take a few minutes depending on your catalog size
-- You only need to do this once
+- You only need to do this once per store view (or let nightly cron finish the first sync and mark it done)
 
 Click **Save Config** when done.
+
+## Multi-store / multi-location
+
+Configure **each store view** separately (Stores → Configuration → store-view switcher → Kiyoh):
+
+1. Enable Kiyoh Reviews
+2. Set Server, Location ID, and API Token for that store’s Kiyoh/Klantenvertellen location
+3. Enable Review Invitations and Product Sync as needed
+4. Save, then run Bulk Product Sync for that store view
+
+Invitations always use the order’s `store_id` to pick credentials, so eurobedden.nl and bed4you.nl (or any two storefronts) can each send to their own location.
+
+### Product codes (SKU rules)
+
+- Kiyoh `product_code` is the Magento **SKU** (sanitized for API safety).
+- **Configurable products:** invitations and order-time sync use the purchased **child/variant** SKU, not the parent. Parents are not bulk/auto-synced.
+- **Custom options** that append option SKUs onto the order line SKU: the plugin sends the **catalog/simple SKU** so invites match catalog sync.
+- Optional fields try common attributes: GTIN (`gtin`, `ean`, `ean13`, `upc`), MPN (`mpn`), brand (`brand`, `manufacturer`). Empty values are omitted.
+
+### Storefront / Hyvä display
+
+This module focuses on invitations and product catalog sync. Shop badges and product-page review UI are **out of scope** here — use a Kiyoh embed/widget or your theme (including Hyvä) to display reviews. Match reviews on the same SKU + location as configured above.
+
+### Migrating from Interactivated Customerreview (`interactivated/customerreview`)
+
+That package is a different module. Cut over as follows:
+
+1. `composer remove interactivated/customerreview` (or disable `Interactivated_Customerreview`)
+2. `composer require kiyoh/reviews`
+3. `bin/magento module:enable Kiyoh_Reviews`
+4. `bin/magento setup:upgrade`
+5. Production: `bin/magento setup:di:compile` and `setup:static-content:deploy` if needed
+6. `bin/magento cache:flush`
+7. Re-enter Location ID + API token **per store view** under Stores → Configuration → Kiyoh (old `interactivated/*` settings are not migrated)
+8. Enable invitations/product sync, run Bulk Product Sync per store
+
+Disable the old module completely so orders do not send duplicate invites.
 
 ## How It Works
 

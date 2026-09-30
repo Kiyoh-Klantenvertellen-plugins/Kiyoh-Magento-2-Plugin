@@ -4,6 +4,7 @@ namespace Kiyoh\Reviews\Cron;
 
 use Kiyoh\Reviews\Service\ProductSyncService;
 use Magento\Framework\App\Config\ScopeConfigInterface;
+use Magento\Framework\App\Config\Storage\WriterInterface;
 use Magento\Store\Model\ScopeInterface;
 use Magento\Store\Model\StoreManagerInterface;
 use Psr\Log\LoggerInterface;
@@ -17,17 +18,22 @@ class InitialProductSync
      * @var ProductSyncService
      */
     private $productSyncService;
-    
+
     /**
      * @var ScopeConfigInterface
      */
     private $scopeConfig;
-    
+
+    /**
+     * @var WriterInterface
+     */
+    private $configWriter;
+
     /**
      * @var StoreManagerInterface
      */
     private $storeManager;
-    
+
     /**
      * @var LoggerInterface
      */
@@ -36,11 +42,13 @@ class InitialProductSync
     public function __construct(
         ProductSyncService $productSyncService,
         ScopeConfigInterface $scopeConfig,
+        WriterInterface $configWriter,
         StoreManagerInterface $storeManager,
         LoggerInterface $logger
     ) {
         $this->productSyncService = $productSyncService;
         $this->scopeConfig = $scopeConfig;
+        $this->configWriter = $configWriter;
         $this->storeManager = $storeManager;
         $this->logger = $logger;
     }
@@ -51,24 +59,24 @@ class InitialProductSync
 
         try {
             $stores = $this->storeManager->getStores();
-            
+
             if (empty($stores)) {
                 $this->logger->warning('Kiyoh Cron: No stores found');
                 return;
             }
-            
+
             foreach ($stores as $store) {
                 try {
                     $storeId = (int) $store->getId();
-                    
+
                     if ($this->shouldRunInitialSync($storeId)) {
                         $this->logger->info('Kiyoh Cron: Running initial sync for store', [
                             'store_id' => $storeId,
                             'store_name' => $store->getName()
                         ]);
-                        
+
                         $result = $this->productSyncService->syncAllProducts($storeId);
-                        
+
                         $this->logger->info('Kiyoh Cron: Initial sync completed for store', [
                             'store_id' => $storeId,
                             'store_name' => $store->getName(),
@@ -76,7 +84,7 @@ class InitialProductSync
                             'failed' => $result['failed'] ?? 0,
                             'success' => $result['success'] ?? false
                         ]);
-                        
+
                         if ($result['success'] ?? false) {
                             $this->markInitialSyncDone($storeId);
                         } else {
@@ -94,7 +102,6 @@ class InitialProductSync
                     ]);
                 }
             }
-            
         } catch (\Exception $e) {
             $this->logger->error('Kiyoh Cron: Critical error in initial product sync', [
                 'exception' => $e->getMessage(),
@@ -143,11 +150,15 @@ class InitialProductSync
 
     private function markInitialSyncDone(int $storeId): void
     {
-        // This would typically use a config writer, but for simplicity
-        // we'll just log that it should be marked as done
-        $this->logger->info('Kiyoh Cron: Initial sync completed, should mark as done', [
-            'store_id' => $storeId,
-            'note' => 'Admin should set initial_sync_done to 1 in configuration'
+        $this->configWriter->save(
+            self::CONFIG_PATH_INITIAL_SYNC_DONE,
+            '1',
+            ScopeInterface::SCOPE_STORES,
+            $storeId
+        );
+
+        $this->logger->info('Kiyoh Cron: Initial sync marked as done', [
+            'store_id' => $storeId
         ]);
     }
 }

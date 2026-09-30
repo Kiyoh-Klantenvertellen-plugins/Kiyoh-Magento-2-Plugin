@@ -14,7 +14,12 @@ class ProductSyncService
     private const CONFIG_PATH_PRODUCT_SYNC_ENABLED = 'kiyoh_reviews/product_sync/enabled';
     private const CONFIG_PATH_EXCLUDED_TYPES = 'kiyoh_reviews/product_sync/excluded_product_types';
     private const CONFIG_PATH_EXCLUDED_CODES = 'kiyoh_reviews/product_sync/excluded_product_codes';
-    
+
+    /**
+     * Always excluded from catalog auto/bulk sync. Invites still use purchased child SKUs.
+     */
+    private const ALWAYS_EXCLUDED_TYPES = ['configurable'];
+
     private const BATCH_SIZE = 200;
 
     /**
@@ -56,7 +61,7 @@ class ProductSyncService
         $this->logger = $logger;
     }
 
-    public function syncAllProducts(int $storeId = 0, callable $progressCallback = null): array
+    public function syncAllProducts(int $storeId = 0, ?callable $progressCallback = null): array
     {
         try {
             if (!$this->isProductSyncEnabled($storeId)) {
@@ -74,9 +79,23 @@ class ProductSyncService
             $this->logger->info('Kiyoh Product Sync: Starting bulk product sync', ['store_id' => $storeId]);
 
             $collection = $this->productCollectionFactory->create();
-            $collection->addAttributeToSelect(['name', 'sku', 'image', 'url_key', 'status', 'gtin', 'mpn', 'brand']);
-            
+            $collection->addAttributeToSelect([
+                'name',
+                'sku',
+                'image',
+                'url_key',
+                'status',
+                'gtin',
+                'ean',
+                'ean13',
+                'upc',
+                'mpn',
+                'brand',
+                'manufacturer'
+            ]);
+
             if ($storeId > 0) {
+                $collection->setStoreId($storeId);
                 $collection->addStoreFilter($storeId);
             }
 
@@ -125,6 +144,9 @@ class ProductSyncService
 
                     foreach ($collection as $product) {
                         try {
+                            if ($storeId > 0) {
+                                $product->setStoreId($storeId);
+                            }
                             if ($this->shouldSyncProduct($product, $storeId)) {
                                 $products[] = $product;
                             }
@@ -205,7 +227,7 @@ class ProductSyncService
         }
     }
 
-    public function syncProduct($product, int $storeId = null): bool
+    public function syncProduct($product, ?int $storeId = null): bool
     {
         try {
             $storeId = $storeId ?? ($product->getStoreId() ?: 0);
@@ -281,7 +303,10 @@ class ProductSyncService
             $storeId
         );
 
-        return $excludedTypes ? explode(',', $excludedTypes) : [];
+        $types = $excludedTypes ? explode(',', $excludedTypes) : [];
+        $types = array_merge($types, self::ALWAYS_EXCLUDED_TYPES);
+
+        return array_values(array_unique(array_filter(array_map('trim', $types))));
     }
 
     private function getExcludedProductCodes(int $storeId): array

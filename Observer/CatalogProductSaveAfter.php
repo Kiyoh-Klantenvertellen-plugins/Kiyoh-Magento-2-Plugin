@@ -2,10 +2,12 @@
 
 namespace Kiyoh\Reviews\Observer;
 
+use Magento\Catalog\Api\ProductRepositoryInterface;
+use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\Event\Observer;
 use Magento\Framework\Event\ObserverInterface;
-use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Store\Model\ScopeInterface;
+use Magento\Store\Model\StoreManagerInterface;
 use Kiyoh\Reviews\Api\ApiServiceInterface;
 use Psr\Log\LoggerInterface;
 
@@ -17,15 +19,30 @@ class CatalogProductSaveAfter implements ObserverInterface
     private const CONFIG_PATH_EXCLUDED_CODES = 'kiyoh_reviews/product_sync/excluded_product_codes';
 
     /**
+     * Always excluded from catalog auto/bulk sync. Invites still use purchased child SKUs.
+     */
+    private const ALWAYS_EXCLUDED_TYPES = ['configurable'];
+
+    /**
      * @var ScopeConfigInterface
      */
     private $scopeConfig;
-    
+
     /**
      * @var ApiServiceInterface
      */
     private $apiService;
-    
+
+    /**
+     * @var StoreManagerInterface
+     */
+    private $storeManager;
+
+    /**
+     * @var ProductRepositoryInterface
+     */
+    private $productRepository;
+
     /**
      * @var LoggerInterface
      */
@@ -34,10 +51,14 @@ class CatalogProductSaveAfter implements ObserverInterface
     public function __construct(
         ScopeConfigInterface $scopeConfig,
         ApiServiceInterface $apiService,
+        StoreManagerInterface $storeManager,
+        ProductRepositoryInterface $productRepository,
         LoggerInterface $logger
     ) {
         $this->scopeConfig = $scopeConfig;
         $this->apiService = $apiService;
+        $this->storeManager = $storeManager;
+        $this->productRepository = $productRepository;
         $this->logger = $logger;
     }
 
@@ -45,47 +66,70 @@ class CatalogProductSaveAfter implements ObserverInterface
     {
         try {
             $product = $observer->getEvent()->getProduct();
-            
+
             if (!$product) {
                 $this->logger->warning('Kiyoh Product Sync: No product in event');
                 return;
             }
-            
-            $storeId = $product->getStoreId() ?: 0;
 
-            if (!$this->isProductSyncEnabled($storeId) || !$this->isAutoSyncEnabled($storeId)) {
+            $websiteIds = array_map('intval', (array) $product->getWebsiteIds());
+            if (empty($websiteIds)) {
                 return;
             }
 
-            if (!$this->shouldSyncProduct($product, $storeId)) {
-                $this->logger->debug('Kiyoh Product Sync: Product excluded from sync', [
-                    'product_id' => $product->getId(),
-                    'sku' => $product->getSku(),
-                    'type' => $product->getTypeId()
-                ]);
-                return;
-            }
+            foreach ($this->storeManager->getStores() as $store) {
+                $storeId = (int) $store->getId();
+                $websiteId = (int) $store->getWebsiteId();
 
-            try {
-                $success = $this->apiService->syncProduct($product);
-                
-                if ($success) {
-                    $this->logger->info('Kiyoh Product Sync: Product synced successfully', [
+                if (!in_array($websiteId, $websiteIds, true)) {
+                    continue;
+                }
+
+                if (!$this->isProductSyncEnabled($storeId) || !$this->isAutoSyncEnabled($storeId)) {
+                    continue;
+                }
+
+                if (!$this->shouldSyncProduct($product, $storeId)) {
+                    $this->logger->debug('Kiyoh Product Sync: Product excluded from sync', [
                         'product_id' => $product->getId(),
-                        'sku' => $product->getSku()
+                        'sku' => $product->getSku(),
+                        'type' => $product->getTypeId(),
+                        'store_id' => $storeId
                     ]);
-                } else {
-                    $this->logger->warning('Kiyoh Product Sync: Product sync failed', [
+                    continue;
+                }
+
+                try {
+                    $storeProduct = $this->productRepository->getById(
+                        (int) $product->getId(),
+                        false,
+                        $storeId
+                    );
+                    $storeProduct->setStoreId($storeId);
+
+                    $success = $this->apiService->syncProduct($storeProduct);
+
+                    if ($success) {
+                        $this->logger->info('Kiyoh Product Sync: Product synced successfully', [
+                            'product_id' => $product->getId(),
+                            'sku' => $storeProduct->getSku(),
+                            'store_id' => $storeId
+                        ]);
+                    } else {
+                        $this->logger->warning('Kiyoh Product Sync: Product sync failed', [
+                            'product_id' => $product->getId(),
+                            'sku' => $storeProduct->getSku(),
+                            'store_id' => $storeId
+                        ]);
+                    }
+                } catch (\Exception $e) {
+                    $this->logger->error('Kiyoh Product Sync: Exception during product sync', [
                         'product_id' => $product->getId(),
-                        'sku' => $product->getSku()
+                        'sku' => $product->getSku(),
+                        'store_id' => $storeId,
+                        'exception' => $e->getMessage()
                     ]);
                 }
-            } catch (\Exception $e) {
-                $this->logger->error('Kiyoh Product Sync: Exception during product sync', [
-                    'product_id' => $product->getId(),
-                    'sku' => $product->getSku(),
-                    'exception' => $e->getMessage()
-                ]);
             }
         } catch (\Exception $e) {
             $this->logger->error('Kiyoh Product Sync: Critical observer exception', [
@@ -120,12 +164,12 @@ class CatalogProductSaveAfter implements ObserverInterface
         }
 
         $excludedTypes = $this->getExcludedProductTypes($storeId);
-        if (in_array($product->getTypeId(), $excludedTypes)) {
+        if (in_array($product->getTypeId(), $excludedTypes, true)) {
             return false;
         }
 
         $excludedCodes = $this->getExcludedProductCodes($storeId);
-        if (in_array($product->getSku(), $excludedCodes)) {
+        if (in_array($product->getSku(), $excludedCodes, true)) {
             return false;
         }
 
@@ -140,7 +184,10 @@ class CatalogProductSaveAfter implements ObserverInterface
             $storeId
         );
 
-        return $excludedTypes ? explode(',', $excludedTypes) : [];
+        $types = $excludedTypes ? explode(',', $excludedTypes) : [];
+        $types = array_merge($types, self::ALWAYS_EXCLUDED_TYPES);
+
+        return array_values(array_unique(array_filter(array_map('trim', $types))));
     }
 
     private function getExcludedProductCodes(int $storeId): array
