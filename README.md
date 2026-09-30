@@ -234,7 +234,8 @@ Customers receive a personalized email in their language with:
 **Compatibility**: Magento 2.3.0+ and PHP 7.2+  
 **Developer**: Kiyoh  
 **License**: Proprietary  
-**Last Updated**: October 2025
+**Latest release**: v1.2.0  
+**Last Updated**: September 2026
 
 ---
 
