@@ -24,7 +24,7 @@ class TestInvitationErrorHandlingCommand extends Command
     public function __construct(
         OrderRepositoryInterface $orderRepository,
         ApiServiceInterface $apiService,
-        string $name = null
+        ?string $name = null
     ) {
         $this->orderRepository = $orderRepository;
         $this->apiService = $apiService;

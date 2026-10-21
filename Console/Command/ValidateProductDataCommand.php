@@ -43,7 +43,7 @@ class ValidateProductDataCommand extends Command
         ProductRepositoryInterface $productRepository,
         SearchCriteriaBuilder $searchCriteriaBuilder,
         ProductCode $productCodeHelper,
-        string $name = null
+        ?string $name = null
     ) {
         $this->appState = $appState;
         $this->productRepository = $productRepository;
@@ -52,7 +52,7 @@ class ValidateProductDataCommand extends Command
         parent::__construct($name);
     }
 
-    protected function configure()
+    protected function configure(): void
     {
         $this->setName('kiyoh:validate-product-data')
             ->setDescription('Validate product data format for Kiyoh API')
@@ -64,7 +64,7 @@ class ValidateProductDataCommand extends Command
             );
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         try {
             $this->appState->setAreaCode(Area::AREA_ADMINHTML);

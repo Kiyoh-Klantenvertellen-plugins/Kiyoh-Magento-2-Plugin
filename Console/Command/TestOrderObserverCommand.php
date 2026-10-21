@@ -40,7 +40,7 @@ class TestOrderObserverCommand extends Command
         parent::__construct();
     }
 
-    protected function configure()
+    protected function configure(): void
     {
         $this->setName('kiyoh:test:observer')
             ->setDescription('Test Kiyoh order observer with specific order')
@@ -52,7 +52,7 @@ class TestOrderObserverCommand extends Command
             );
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $orderId = $input->getOption('order-id');
         

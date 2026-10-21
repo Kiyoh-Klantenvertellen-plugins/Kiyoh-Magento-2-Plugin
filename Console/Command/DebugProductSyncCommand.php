@@ -32,7 +32,7 @@ class DebugProductSyncCommand extends Command
         ScopeConfigInterface $scopeConfig,
         StoreManagerInterface $storeManager,
         ProductRepositoryInterface $productRepository,
-        string $name = null
+        ?string $name = null
     ) {
         $this->scopeConfig = $scopeConfig;
         $this->storeManager = $storeManager;

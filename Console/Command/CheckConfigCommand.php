@@ -37,7 +37,7 @@ class CheckConfigCommand extends Command
         State $appState,
         ScopeConfigInterface $scopeConfig,
         StoreManagerInterface $storeManager,
-        string $name = null
+        ?string $name = null
     ) {
         $this->appState = $appState;
         $this->scopeConfig = $scopeConfig;
@@ -45,7 +45,7 @@ class CheckConfigCommand extends Command
         parent::__construct($name);
     }
 
-    protected function configure()
+    protected function configure(): void
     {
         $this->setName('kiyoh:check-config')
             ->setDescription('Check current Kiyoh Reviews configuration')
@@ -58,7 +58,7 @@ class CheckConfigCommand extends Command
             );
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         try {
             $this->appState->setAreaCode(Area::AREA_ADMINHTML);
