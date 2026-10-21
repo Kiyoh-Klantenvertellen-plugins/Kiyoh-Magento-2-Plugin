@@ -25,7 +25,7 @@ class BulkProductSyncCommand extends Command
     public function __construct(
         ProductSyncService $productSyncService,
         StoreManagerInterface $storeManager,
-        string $name = null
+        ?string $name = null
     ) {
         $this->productSyncService = $productSyncService;
         $this->storeManager = $storeManager;

@@ -19,28 +19,28 @@ Kiyoh Reviews is a Magento 2 extension that automatically collects customer revi
 ## System Requirements
 
 ### Minimum Requirements
-- **Magento**: 2.3.0 or higher
-- **PHP**: 7.2 or higher
+- **Magento**: 2.4.6 or higher (first release that officially supports PHP 8.2)
+- **PHP**: 8.2 or higher
 - **Server Extensions**: cURL, JSON (usually pre-installed)
 
 ### Recommended for Best Performance
-- **Magento**: 2.4.6 or higher (LTS version)
-- **PHP**: 8.1 or higher
+- **Magento**: 2.4.9 or higher
+- **PHP**: 8.4 or higher
 - **SSL Certificate**: For secure API communication
 
 ### Compatibility
 
 The extension is compatible with:
-- ✅ Magento Open Source 2.3.x and 2.4.x
-- ✅ Adobe Commerce (Magento Commerce) 2.3.x and 2.4.x
-- ✅ All standard Magento installations
+- ✅ Magento Open Source 2.4.6 and newer
+- ✅ Adobe Commerce (Magento Commerce) 2.4.6 and newer
+- ✅ All standard Magento installations on PHP 8.2+
 - ✅ Multi-store and multi-website setups
 - ✅ Cloud hosting and on-premise installations
 
-**Note for older Magento installations:**
-- Magento 2.3.x is supported but end-of-life (no security updates)
-- We recommend upgrading to Magento 2.4.x for security and performance
-- If you're on Magento 2.2.x or older, contact your technical team about upgrading
+**Note for older installations:**
+- PHP 8.1 and older are not supported. Those versions are end-of-life and are affected by PHP CGI argument-injection issues (php2shell).
+- Magento 2.3.x and Magento 2.4.0–2.4.5 do not support PHP 8.2, so they cannot run this release.
+- Upgrade Magento to 2.4.6 or newer and PHP to 8.2 or newer before installing.
 
 ## Getting Started
 
@@ -65,7 +65,7 @@ Your developer or technical team will install the extension. The installation pr
 Once installed, you'll see a new "Kiyoh" section in your Magento admin panel under **Stores > Configuration**.
 
 **Compatibility Check:**
-If you're running an older version of Magento (2.3.x), ensure your PHP version is at least 7.2. Your technical team can verify this and upgrade if needed.
+This release requires PHP 8.2 or newer and Magento 2.4.6 or newer. Your technical team can verify both versions before installing.
 
 ### Step 3: Configure the Extension
 
@@ -231,11 +231,11 @@ Customers receive a personalized email in their language with:
 ## About This Extension
 
 **Versioning**: Composer/Packagist releases follow Git tags  
-**Compatibility**: Magento 2.3.0+ and PHP 7.2+  
+**Compatibility**: Magento 2.4.6+ and PHP 8.2+  
 **Developer**: Kiyoh  
 **License**: Proprietary  
-**Latest release**: v1.2.0  
-**Last Updated**: September 2026
+**Latest release**: v1.3.0  
+**Last Updated**: October 2026
 
 ---
 

@@ -170,7 +170,7 @@ class BulkSync extends Action
         return $result;
     }
 
-    private function syncAllStores(callable $progressCallback = null): array
+    private function syncAllStores(?callable $progressCallback = null): array
     {
         $stores = $this->storeManager->getStores();
         $totalResult = [

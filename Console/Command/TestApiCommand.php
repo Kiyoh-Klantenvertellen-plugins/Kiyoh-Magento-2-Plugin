@@ -61,7 +61,7 @@ class TestApiCommand extends Command
         OrderRepositoryInterface $orderRepository,
         ProductRepositoryInterface $productRepository,
         SearchCriteriaBuilder $searchCriteriaBuilder,
-        string $name = null
+        ?string $name = null
     ) {
         $this->apiService = $apiService;
         $this->appState = $appState;
@@ -72,7 +72,7 @@ class TestApiCommand extends Command
         parent::__construct($name);
     }
 
-    protected function configure()
+    protected function configure(): void
     {
         $this->setName('kiyoh:test-api')
             ->setDescription('Test Kiyoh API integration with your store configuration and data')
@@ -105,7 +105,7 @@ class TestApiCommand extends Command
             );
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         try {
             $this->appState->setAreaCode(Area::AREA_ADMINHTML);

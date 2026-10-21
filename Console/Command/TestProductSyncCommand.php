@@ -31,7 +31,7 @@ class TestProductSyncCommand extends Command
         ProductSyncService $productSyncService,
         ProductRepositoryInterface $productRepository,
         SearchCriteriaBuilder $searchCriteriaBuilder,
-        string $name = null
+        ?string $name = null
     ) {
         $this->productSyncService = $productSyncService;
         $this->productRepository = $productRepository;
