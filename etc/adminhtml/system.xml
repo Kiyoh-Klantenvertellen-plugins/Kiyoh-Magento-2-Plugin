@@ -40,6 +40,10 @@
                         <field id="enabled">1</field>
                     </depends>
                 </field>
+                <field id="mobile_urls" translate="label comment" type="text" sortOrder="50" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Kiyoh Mobile URL(s)</label>
+                    <comment>Comma-separated Kiyoh Mobile base URLs. Health is reported to each URL for this store view. Default: https://kiyoh-mobile.com. Add https://kiyohmobileui-staging.up.railway.app to report to staging as well.</comment>
+                </field>
             </group>
             
             <group id="review_invitations" translate="label" type="text" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
