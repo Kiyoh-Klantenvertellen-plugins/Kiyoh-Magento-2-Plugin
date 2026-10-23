@@ -42,7 +42,12 @@ final class MobileUrls
             return null;
         }
 
-        if (!preg_match('#^https?://#i', $url)) {
+        if (preg_match('#^([a-z][a-z0-9+.-]*)://#i', $url, $schemeMatch)) {
+            $scheme = strtolower($schemeMatch[1]);
+            if ($scheme !== 'http' && $scheme !== 'https') {
+                return null;
+            }
+        } else {
             $url = 'https://' . $url;
         }
 
