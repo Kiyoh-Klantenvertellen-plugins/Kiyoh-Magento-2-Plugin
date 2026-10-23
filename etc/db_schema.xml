@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<schema xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:Setup/Declaration/Schema/etc/schema.xsd">
+    <table name="kiyoh_reviews_shop_health" resource="default" engine="innodb" comment="Kiyoh Mobile integration health state per store view">
+        <column xsi:type="smallint" name="store_id" unsigned="true" nullable="false" comment="Store View ID"/>
+        <column xsi:type="mediumtext" name="state_json" nullable="false" comment="Serialized health state"/>
+        <column xsi:type="timestamp" name="updated_at" on_update="true" nullable="false" default="CURRENT_TIMESTAMP" comment="Updated At"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="store_id"/>
+        </constraint>
+    </table>
+</schema>

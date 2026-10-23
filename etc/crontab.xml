@@ -4,5 +4,8 @@
         <job name="kiyoh_reviews_initial_product_sync" instance="Kiyoh\Reviews\Cron\InitialProductSync" method="execute">
             <schedule>0 3 * * *</schedule>
         </job>
+        <job name="kiyoh_reviews_mobile_health" instance="Kiyoh\Reviews\Cron\ReportMobileHealth" method="execute">
+            <schedule>30 4 * * *</schedule>
+        </job>
     </group>
 </config>

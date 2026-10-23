@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.0 - 2026-10-23
+
+### Added
+
+- Kiyoh Mobile integration health (Jira KP-87). For each store view with a Location ID and API token, the module POSTs to `{url}/api/integrations/health` on every comma-separated **Kiyoh Mobile URL(s)** value (default `https://kiyoh-mobile.com`). The body uses `platform` `magento2`, `shopId` from the store base host, and `pluginVersion`, with connection, invite, product sync (up to 500 product codes), webhook, and widget groups. Reports go out on config save, invitation sent or failed, and product sync, plus a daily cron. Unchanged payloads are sent again once the last accepted report is 24 hours old. Calls use a 2 second timeout, wait out HTTP 429, and leave order processing running when the health endpoint is slow or unavailable.
+
 ## 1.3.0 - 2026-10-21
 
 ### Fixed

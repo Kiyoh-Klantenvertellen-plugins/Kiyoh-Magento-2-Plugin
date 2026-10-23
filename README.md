@@ -81,9 +81,10 @@ In the **API Settings** section:
 - **Server**: Select your platform (e.g., klantenvertellen.nl)
 - **Location ID**: Enter your Location ID
 - **API Token**: Enter your API Token
+- **Kiyoh Mobile URL(s)**: Leave the default `https://kiyoh-mobile.com`, or enter a comma-separated list when this store view should also report to another Kiyoh Mobile host (for example `https://kiyohmobileui-staging.up.railway.app`)
 - Click **Save Config**
 
-The system will automatically verify your credentials when you save.
+The system will automatically verify your credentials when you save. Saving also sends this store view's integration health to each Kiyoh Mobile URL.
 
 #### Configure Review Invitations
 
@@ -155,6 +156,14 @@ Configure **each store view** separately (Stores → Configuration → store-vie
 4. Save, then run Bulk Product Sync for that store view
 
 Invitations always use the order’s `store_id` to pick credentials, so eurobedden.nl and bed4you.nl (or any two storefronts) can each send to their own location.
+
+### Kiyoh Mobile health
+
+Each store view that has a Location ID and API token reports its own shop to Kiyoh Mobile. The shop id is the store's secure base host. A store view other than the default view also includes its store code, so two views on one domain stay separate.
+
+Health is sent when you save the Kiyoh configuration, when an invitation is sent or fails, when products are synced, and once a day by cron (`kiyoh_reviews_mobile_health`). The same payload is sent again after 24 hours. Each call uses a short timeout. A slow or unavailable health endpoint leaves orders and invitations running.
+
+The report includes connection status, invitation results from the last 24 hours, and up to 500 synced product codes. This module records no incoming webhooks and does not inject a review widget, and the health payload says so.
 
 ### Product codes (SKU rules)
 
@@ -234,7 +243,7 @@ Customers receive a personalized email in their language with:
 **Compatibility**: Magento 2.4.6+ and PHP 8.2+  
 **Developer**: Kiyoh  
 **License**: Proprietary  
-**Latest release**: v1.3.0  
+**Latest release**: v1.4.0  
 **Last Updated**: October 2026
 
 ---

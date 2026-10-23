@@ -10,6 +10,7 @@ use Magento\Sales\Api\Data\OrderInterface;
 use Magento\Customer\Api\GroupRepositoryInterface;
 use Kiyoh\Reviews\Api\ApiServiceInterface;
 use Kiyoh\Reviews\Helper\ProductCode;
+use Kiyoh\Reviews\Model\Health\HealthReporter;
 use Psr\Log\LoggerInterface;
 
 class SalesOrderSaveAfter implements ObserverInterface
@@ -48,18 +49,25 @@ class SalesOrderSaveAfter implements ObserverInterface
      */
     private $logger;
 
+    /**
+     * @var HealthReporter
+     */
+    private $healthReporter;
+
     public function __construct(
         ScopeConfigInterface $scopeConfig,
         ApiServiceInterface $apiService,
         GroupRepositoryInterface $groupRepository,
         ProductCode $productCodeHelper,
-        LoggerInterface $logger
+        LoggerInterface $logger,
+        HealthReporter $healthReporter
     ) {
         $this->scopeConfig = $scopeConfig;
         $this->apiService = $apiService;
         $this->groupRepository = $groupRepository;
         $this->productCodeHelper = $productCodeHelper;
         $this->logger = $logger;
+        $this->healthReporter = $healthReporter;
     }
 
     public function execute(Observer $observer): void
@@ -150,6 +158,7 @@ class SalesOrderSaveAfter implements ObserverInterface
         $invitationType = $this->getConfig(self::CONFIG_PATH_INVITATION_TYPE, $storeId);
         $productCodes = $this->extractProductCodesFromOrder($order, $storeId);
 
+        $this->healthReporter->deferPublishing();
         try {
             if ($invitationType === 'product_only') {
                 if (!empty($productCodes)) {
@@ -170,6 +179,8 @@ class SalesOrderSaveAfter implements ObserverInterface
                 'order_id' => $order->getId(),
                 'exception' => $e->getMessage()
             ]);
+        } finally {
+            $this->healthReporter->flushDeferred();
         }
     }
 

@@ -1,6 +1,11 @@
 <?xml version="1.0"?>
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
     <preference for="Kiyoh\Reviews\Api\ApiServiceInterface" type="Kiyoh\Reviews\Service\ApiService"/>
+    <preference for="Kiyoh\Reviews\Model\Health\ShopHealthStoreInterface" type="Kiyoh\Reviews\Model\ResourceModel\ShopHealthRepository"/>
+    <preference for="Kiyoh\Reviews\Model\Health\HealthTransportInterface" type="Kiyoh\Reviews\Model\Health\CurlHealthTransport"/>
+    <preference for="Kiyoh\Reviews\Model\Health\HealthContextProviderInterface" type="Kiyoh\Reviews\Model\Health\ConfigHealthContextProvider"/>
+    <preference for="Kiyoh\Reviews\Model\Health\ClockInterface" type="Kiyoh\Reviews\Model\Health\SystemClock"/>
+    <preference for="Kiyoh\Reviews\Model\Health\HealthLoggerInterface" type="Kiyoh\Reviews\Model\Health\PsrHealthLogger"/>
     
     <type name="Magento\Framework\Console\CommandListInterface">
         <arguments>
