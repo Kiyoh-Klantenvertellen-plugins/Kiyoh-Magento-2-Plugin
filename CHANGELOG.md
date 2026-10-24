@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.5.0 - 2026-10-24
+
+### Security
+
+- TLS certificate and hostname verification is on for every outbound call in `ApiService`, including legacy credential checks. `CURLOPT_SSL_VERIFYPEER` is no longer disabled.
+
+### Added
+
+- Kiyoh-Connect sign-in for public client `kiyoh-magento2` (Kiyoh-Connect 1.2 per-shop return addresses). Admin config has **Connect with Kiyoh / Klantenvertellen**, **Test connection**, and **Disconnect**. The return address is `https://{shop-host}/kiyoh/oauth/callback`. `POST /shops/register` needs no shared key and returns a one-time shop credential, stored encrypted. Code exchange uses PKCE S256, the exact redirect URI, and that shop credential. The manual Location ID and API token remain a fallback for existing installs. No merchant HMAC key or client secret is required or embedded.
+
+### Changed
+
+- `kiyoh:test-api` receives `OrderInterfaceFactory` through its constructor. It no longer calls `ObjectManager::getInstance()`.
+
 ## 1.4.0 - 2026-10-23
 
 ### Added

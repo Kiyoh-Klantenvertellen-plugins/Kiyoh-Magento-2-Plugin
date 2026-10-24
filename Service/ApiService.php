@@ -19,7 +19,7 @@ class ApiService implements ApiServiceInterface
     private const CONFIG_PATH_ENABLED = 'kiyoh_reviews/api_settings/enabled';
     private const CONFIG_PATH_SERVER = 'kiyoh_reviews/api_settings/server';
     private const CONFIG_PATH_LOCATION_ID = 'kiyoh_reviews/api_settings/location_id';
-    private const CONFIG_PATH_API_TOKEN = 'kiyoh_reviews/api_settings/api_token';
+    private const CONFIG_PATH_API_TOKEN = 'kiyoh_reviews/api_settings/api_token'; // preflight: ignore — Magento config path, not a secret
     private const CONFIG_PATH_INVITATIONS_ENABLED = 'kiyoh_reviews/review_invitations/enabled';
     private const CONFIG_PATH_INVITATION_TYPE = 'kiyoh_reviews/review_invitations/invitation_type';
     private const CONFIG_PATH_FALLBACK_LANGUAGE = 'kiyoh_reviews/review_invitations/fallback_language';
@@ -260,6 +260,7 @@ class ApiService implements ApiServiceInterface
 
         try {
             $ch = curl_init($url);
+            $this->applyTlsVerification($ch);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_TIMEOUT, self::TIMEOUT_REVIEWS);
             curl_setopt($ch, CURLOPT_HTTPHEADER, [
@@ -312,6 +313,7 @@ class ApiService implements ApiServiceInterface
 
         try {
             $ch = curl_init($url);
+            $this->applyTlsVerification($ch);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_TIMEOUT, self::TIMEOUT_REVIEWS);
             curl_setopt($ch, CURLOPT_HTTPHEADER, [
@@ -545,6 +547,7 @@ class ApiService implements ApiServiceInterface
 
         try {
             $ch = curl_init($url);
+            $this->applyTlsVerification($ch);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_TIMEOUT, self::TIMEOUT_INVITATION);
             curl_setopt($ch, CURLOPT_POST, true);
@@ -657,7 +660,8 @@ class ApiService implements ApiServiceInterface
             if ($ch === false) {
                 throw new \RuntimeException('Failed to initialize cURL');
             }
-            
+            $this->applyTlsVerification($ch);
+
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_TIMEOUT, self::TIMEOUT_INVITATION);
             curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PUT');
@@ -762,7 +766,8 @@ class ApiService implements ApiServiceInterface
             if ($ch === false) {
                 throw new \RuntimeException('Failed to initialize cURL');
             }
-            
+            $this->applyTlsVerification($ch);
+
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_TIMEOUT, self::TIMEOUT_INVITATION * 5);
             curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PUT');
@@ -919,6 +924,17 @@ class ApiService implements ApiServiceInterface
         return $fallback;
     }
 
+    /**
+     * Certificate and hostname checks stay on for every outbound Kiyoh call.
+     *
+     * @param \CurlHandle|resource $ch
+     */
+    private function applyTlsVerification($ch): void
+    {
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
+    }
+
     private function getServerUrl(int $storeId): string
     {
         $server = $this->getConfig(self::CONFIG_PATH_SERVER, $storeId);
@@ -965,9 +981,9 @@ class ApiService implements ApiServiceInterface
 
         try {
             $ch = curl_init($url);
+            $this->applyTlsVerification($ch);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_TIMEOUT, self::TIMEOUT_REVIEWS);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 
             $response = curl_exec($ch);
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -1014,6 +1030,7 @@ class ApiService implements ApiServiceInterface
 
         try {
             $ch = curl_init($url);
+            $this->applyTlsVerification($ch);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_TIMEOUT, self::TIMEOUT_REVIEWS);
             curl_setopt($ch, CURLOPT_HTTPHEADER, [

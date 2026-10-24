@@ -84,6 +84,20 @@ In the **API Settings** section:
 - **Kiyoh Mobile URL(s)**: Leave the default `https://kiyoh-mobile.com`, or enter a comma-separated list when this store view should also report to another Kiyoh Mobile host (for example `https://kiyohmobileui-staging.up.railway.app`)
 - Click **Save Config**
 
+#### Connect with Kiyoh / Klantenvertellen
+
+On the same API Settings group, **Connect with Kiyoh / Klantenvertellen** signs the merchant in through Kiyoh-Connect instead of pasting a token. Pick the Server (`kiyoh.com` uses `https://connect.kiyoh.com`, `klantenvertellen.nl` uses `https://connect.klantenvertellen.nl`), save if you changed it, then click Connect. A window opens for the Kiyoh or Klantenvertellen login. After the merchant picks a location, this shop's Location ID and API token are filled in for the current scope.
+
+**Test connection** checks the saved Location ID and API token with one statistics call and shows a short success or failure message.
+
+**Disconnect** revokes the Kiyoh-Connect session. If the credentials came from Connect, the Location ID and API token are cleared. A token that was pasted by hand is left in place.
+
+The manual Location ID and API Token fields are unchanged and remain the fallback for existing installs. Pasting a token does not remove the shop credential Connect already issued.
+
+No shared HMAC key or client secret is configured on the shop. The module registers itself with Kiyoh-Connect, stores the one-time shop credential encrypted, and sends that credential on token, refresh, and revoke calls.
+
+The browser returns to `https://{shop-host}/kiyoh/oauth/callback` (the shop host, not the Magento admin path and not a store-code prefix). The vhost must route that path to Magento. `Add Store Code to Urls` is not part of that return address.
+
 The system will automatically verify your credentials when you save. Saving also sends this store view's integration health to each Kiyoh Mobile URL.
 
 #### Configure Review Invitations
@@ -237,13 +251,37 @@ Customers receive a personalized email in their language with:
 4. **Take It Offline**: Invite them to contact you directly
 5. **Learn and Improve**: Use feedback to improve your service
 
+## Permissions, stored data, and uninstall
+
+### Permissions
+
+- **Admin ACL** `Kiyoh_Reviews::config` (under Stores → Configuration). Anyone who can edit this configuration can connect, test, disconnect, and read the saved token. No other Magento ACL is requested.
+- **Storefront route** `https://{shop-host}/kiyoh/oauth/callback` is public because Kiyoh-Connect redirects the merchant's browser there. It finishes a sign-in only when `state` matches a pending login an admin started in the last 15 minutes. It does not print the API token.
+- **Outbound HTTPS**, certificate checks on: `connect.kiyoh.com`, `connect.klantenvertellen.nl`, `www.kiyoh.com`, `www.klantenvertellen.nl`, and each configured Kiyoh Mobile URL.
+- **OAuth scope** `integration:connect` only. The module does not ask Kiyoh for any broader scope.
+
+### Data stored
+
+- **Configuration** (`core_config_data`, per default / website / store scope): Server, Location ID, API token (encrypted), credential source (`connect` or `manual`), Kiyoh-Connect refresh token and access token (encrypted), access-token expiry, location name, the last Connect result message, and the one-time shop credential (`shop_id` and `shop_secret`, both encrypted) plus the issuer and return address it was registered for. The shop credential is not shown on the configuration form.
+- **`kiyoh_reviews_connect_login`**: one row per in-progress sign-in (encrypted PKCE verifier, return address, scope). The row is deleted when the callback runs or after 15 minutes.
+- **`kiyoh_reviews_shop_health`**: one row per store view with the latest health payload state (not a history).
+
+Customer name, email, and order id are sent to Kiyoh when an invitation is sent. They are not copied into these tables. Tokens are not written to the Magento log.
+
+The refresh token is kept until Disconnect, until a manual token replaces it, or until uninstall. The shop credential is kept when a manual token is saved, because Connect returns it only once. Disconnect removes it after the shop registration is revoked. Kiyoh-Connect refresh tokens last 30 days on the Connect side. Access tokens last about 1 hour. Health rows are overwritten in place.
+
+### Uninstall
+
+- `bin/magento module:disable Kiyoh_Reviews` stops the module and **keeps** configuration, the health table, and any Connect session.
+- `bin/magento module:uninstall -r Kiyoh_Reviews` drops `kiyoh_reviews_shop_health` and `kiyoh_reviews_connect_login`, deletes `core_config_data` paths under `kiyoh_reviews/`, and best-effort calls Kiyoh-Connect `POST /revoke` and `POST /shops/revoke` with each stored shop credential. A scope with no shop credential is logged and skipped for the remote call. Local data is still removed. Orders, customers, and other modules' tables are not touched.
+
 ## About This Extension
 
 **Versioning**: Composer/Packagist releases follow Git tags  
 **Compatibility**: Magento 2.4.6+ and PHP 8.2+  
 **Developer**: Kiyoh  
 **License**: Proprietary  
-**Latest release**: v1.4.0  
+**Latest release**: v1.5.0  
 **Last Updated**: October 2026
 
 ---

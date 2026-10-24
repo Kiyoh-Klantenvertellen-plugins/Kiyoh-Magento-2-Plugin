@@ -6,6 +6,8 @@
     <preference for="Kiyoh\Reviews\Model\Health\HealthContextProviderInterface" type="Kiyoh\Reviews\Model\Health\ConfigHealthContextProvider"/>
     <preference for="Kiyoh\Reviews\Model\Health\ClockInterface" type="Kiyoh\Reviews\Model\Health\SystemClock"/>
     <preference for="Kiyoh\Reviews\Model\Health\HealthLoggerInterface" type="Kiyoh\Reviews\Model\Health\PsrHealthLogger"/>
+    <preference for="Kiyoh\Reviews\Model\Connect\ConnectTransportInterface" type="Kiyoh\Reviews\Model\Connect\CurlConnectTransport"/>
+    <preference for="Kiyoh\Reviews\Model\Connect\PendingLoginStore" type="Kiyoh\Reviews\Model\ResourceModel\ConnectLoginRepository"/>
     
     <type name="Magento\Framework\Console\CommandListInterface">
         <arguments>

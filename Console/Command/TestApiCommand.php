@@ -9,6 +9,7 @@ use Magento\Framework\App\Area;
 use Magento\Store\Model\StoreManagerInterface;
 use Magento\Sales\Api\OrderRepositoryInterface;
 use Magento\Sales\Api\Data\OrderInterface;
+use Magento\Sales\Api\Data\OrderInterfaceFactory;
 use Magento\Catalog\Api\ProductRepositoryInterface;
 use Magento\Framework\Api\SearchCriteriaBuilder;
 use Symfony\Component\Console\Command\Command;
@@ -54,6 +55,11 @@ class TestApiCommand extends Command
      */
     private $searchCriteriaBuilder;
 
+    /**
+     * @var OrderInterfaceFactory
+     */
+    private $orderFactory;
+
     public function __construct(
         ApiServiceInterface $apiService,
         State $appState,
@@ -61,6 +67,7 @@ class TestApiCommand extends Command
         OrderRepositoryInterface $orderRepository,
         ProductRepositoryInterface $productRepository,
         SearchCriteriaBuilder $searchCriteriaBuilder,
+        OrderInterfaceFactory $orderFactory,
         ?string $name = null
     ) {
         $this->apiService = $apiService;
@@ -69,6 +76,7 @@ class TestApiCommand extends Command
         $this->orderRepository = $orderRepository;
         $this->productRepository = $productRepository;
         $this->searchCriteriaBuilder = $searchCriteriaBuilder;
+        $this->orderFactory = $orderFactory;
         parent::__construct($name);
     }
 
@@ -470,10 +478,7 @@ class TestApiCommand extends Command
             // Fall back to mock order
         }
         
-        // Create a mock order for testing
-        $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
-        $orderFactory = $objectManager->get(\Magento\Sales\Api\Data\OrderInterfaceFactory::class);
-        $order = $orderFactory->create();
+        $order = $this->orderFactory->create();
         
         $order->setStoreId($storeId);
         $order->setCustomerEmail($testEmail);

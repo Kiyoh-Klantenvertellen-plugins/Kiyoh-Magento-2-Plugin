@@ -24,6 +24,14 @@
                         <field id="enabled">1</field>
                     </depends>
                 </field>
+                <field id="connect_actions" translate="label comment" type="button" sortOrder="25" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Kiyoh-Connect</label>
+                    <frontend_model>Kiyoh\Reviews\Block\Adminhtml\System\Config\ConnectActions</frontend_model>
+                    <comment>Connect with Kiyoh / Klantenvertellen, test the saved credentials, or disconnect. The manual Location ID and API Token stay available for existing installs.</comment>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
                 <field id="location_id" translate="label" type="text" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Location ID</label>
                     <comment>Your location ID from Kiyoh/Klantenvertellen account</comment>

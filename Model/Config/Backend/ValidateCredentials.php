@@ -2,13 +2,21 @@
 
 namespace Kiyoh\Reviews\Model\Config\Backend;
 
+use Kiyoh\Reviews\Model\Connect\ConnectConfig;
 use Magento\Config\Model\Config\Backend\Encrypted;
+use Magento\Framework\App\Config\ScopeConfigInterface;
+use Magento\Framework\App\Config\Storage\WriterInterface;
 use Magento\Framework\Exception\ValidatorException;
 use Kiyoh\Reviews\Api\ApiServiceInterface;
 
 class ValidateCredentials extends Encrypted
 {
     protected ApiServiceInterface $apiService;
+
+    /**
+     * @var WriterInterface
+     */
+    private $configWriter;
 
     public function __construct(
         \Magento\Framework\Model\Context $context,
@@ -17,11 +25,13 @@ class ValidateCredentials extends Encrypted
         \Magento\Framework\App\Cache\TypeListInterface $cacheTypeList,
         \Magento\Framework\Encryption\EncryptorInterface $encryptor,
         ApiServiceInterface $apiService,
+        WriterInterface $configWriter,
         ?\Magento\Framework\Model\ResourceModel\AbstractResource $resource = null,
         ?\Magento\Framework\Data\Collection\AbstractDb $resourceCollection = null,
         array $data = []
     ) {
         $this->apiService = $apiService;
+        $this->configWriter = $configWriter;
         parent::__construct($context, $registry, $config, $cacheTypeList, $encryptor, $resource, $resourceCollection, $data);
     }
 
@@ -61,6 +71,27 @@ class ValidateCredentials extends Encrypted
             );
         }
 
+        $this->markManualToken();
+
         return parent::beforeSave();
+    }
+
+    /**
+     * A pasted token replaces a Kiyoh-Connect session but does not call the merchant's shop.
+     * The one-time shop credential is left in place. Connect returns it only once.
+     */
+    private function markManualToken(): void
+    {
+        $scope = (string) $this->getScope();
+        $scopeId = (int) $this->getScopeId();
+        if ($scope === '' || $scope === ScopeConfigInterface::SCOPE_TYPE_DEFAULT) {
+            $scope = ScopeConfigInterface::SCOPE_TYPE_DEFAULT;
+            $scopeId = 0;
+        }
+
+        $this->configWriter->save(ConnectConfig::SOURCE, 'manual', $scope, $scopeId);
+        $this->configWriter->delete(ConnectConfig::REFRESH, $scope, $scopeId);
+        $this->configWriter->delete(ConnectConfig::ACCESS, $scope, $scopeId);
+        $this->configWriter->delete(ConnectConfig::ACCESS_EXPIRES, $scope, $scopeId);
     }
 }

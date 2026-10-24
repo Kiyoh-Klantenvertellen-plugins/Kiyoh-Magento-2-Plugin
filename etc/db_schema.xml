@@ -8,4 +8,12 @@
             <column name="store_id"/>
         </constraint>
     </table>
+    <table name="kiyoh_reviews_connect_login" resource="default" engine="innodb" comment="Single-use Kiyoh-Connect PKCE login state">
+        <column xsi:type="varchar" name="state" nullable="false" length="128" comment="OAuth state"/>
+        <column xsi:type="mediumtext" name="payload" nullable="false" comment="Encrypted PKCE verifier and scope"/>
+        <column xsi:type="int" name="expires_at" unsigned="true" nullable="false" comment="Unix expiry"/>
+        <constraint xsi:type="primary" referenceId="KIYOH_CONNECT_LOGIN_STATE">
+            <column name="state"/>
+        </constraint>
+    </table>
 </schema>

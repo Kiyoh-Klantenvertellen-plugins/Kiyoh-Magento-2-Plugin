@@ -1,0 +1,132 @@
+<?php
+/**
+ * @var \Kiyoh\Reviews\Block\Adminhtml\System\Config\ConnectActions $block
+ */
+$startUrl = $block->getStartUrl();
+$statusUrl = $block->getStatusUrl();
+$disconnectUrl = $block->getDisconnectUrl();
+$testUrl = $block->getTestUrl();
+$store = $block->getStoreParam();
+$website = $block->getWebsiteParam();
+?>
+<div id="kiyoh-connect-actions">
+    <button type="button" class="action-default scalable" id="kiyoh-connect-start">
+        <span><?= $block->escapeHtml(__('Connect with Kiyoh / Klantenvertellen')) ?></span>
+    </button>
+    <button type="button" class="action-secondary scalable" id="kiyoh-connect-test" style="margin-left: 8px;">
+        <span><?= $block->escapeHtml(__('Test connection')) ?></span>
+    </button>
+    <button type="button" class="action-secondary scalable" id="kiyoh-connect-disconnect" style="margin-left: 8px;">
+        <span><?= $block->escapeHtml(__('Disconnect')) ?></span>
+    </button>
+    <div id="kiyoh-connect-result" class="admin__field-note" style="margin-top: 8px;"></div>
+    <p class="note">
+        <span><?= $block->escapeHtml(__('Sign-in opens Kiyoh-Connect in a new window and returns to https://{shop-host}/kiyoh/oauth/callback. Allow pop-ups for this admin host. Location ID and API Token below stay available as a manual fallback for existing installs. Save the Server field first when you change it.')) ?></span>
+    </p>
+</div>
+<script>
+require(['jquery'], function ($) {
+    var startUrl = '<?= $block->escapeJs($startUrl) ?>';
+    var statusUrl = '<?= $block->escapeJs($statusUrl) ?>';
+    var disconnectUrl = '<?= $block->escapeJs($disconnectUrl) ?>';
+    var testUrl = '<?= $block->escapeJs($testUrl) ?>';
+    var store = '<?= $block->escapeJs($store) ?>';
+    var website = '<?= $block->escapeJs($website) ?>';
+    var pollTimer = null;
+
+    function show(message) {
+        $('#kiyoh-connect-result').text(message || '');
+    }
+
+    function serverValue() {
+        var field = $('#kiyoh_reviews_api_settings_server');
+        return field.length ? String(field.val() || '') : '';
+    }
+
+    function post(url, extra) {
+        var data = {form_key: window.FORM_KEY, store: store, website: website};
+        if (extra) {
+            $.extend(data, extra);
+        }
+        return $.ajax({url: url, type: 'POST', dataType: 'json', data: data});
+    }
+
+    function stopPoll() {
+        if (pollTimer) {
+            window.clearInterval(pollTimer);
+            pollTimer = null;
+        }
+    }
+
+    $('#kiyoh-connect-start').on('click', function () {
+        var button = $(this);
+        button.prop('disabled', true);
+        show('Registering this shop with Kiyoh-Connect...');
+        post(startUrl, {server: serverValue()}).done(function (res) {
+            button.prop('disabled', false);
+            if (!res || !res.success || !res.authorizeUrl) {
+                show(res && res.message ? res.message : 'Could not start Kiyoh-Connect.');
+                return;
+            }
+            var popup = window.open(res.authorizeUrl, 'kiyohConnect', 'width=520,height=760');
+            if (!popup) {
+                show('Pop-up blocked. Allow pop-ups for this site and click Connect again.');
+                return;
+            }
+            show('Finish sign-in in the Kiyoh-Connect window.');
+            var attempts = 0;
+            stopPoll();
+            pollTimer = window.setInterval(function () {
+                attempts += 1;
+                if (attempts > 90) {
+                    stopPoll();
+                    show('Still waiting. If you finished signing in, refresh this page.');
+                    return;
+                }
+                post(statusUrl, {attempt: res.attempt}).done(function (status) {
+                    if (!status || !status.done) {
+                        return;
+                    }
+                    stopPoll();
+                    show(status.message || '');
+                    if (status.ok) {
+                        window.location.reload();
+                    }
+                });
+            }, 2000);
+        }).fail(function () {
+            button.prop('disabled', false);
+            show('Could not start Kiyoh-Connect. Reload the page and try again.');
+        });
+    });
+
+    $('#kiyoh-connect-test').on('click', function () {
+        var button = $(this);
+        button.prop('disabled', true);
+        show('Testing the saved Location ID and API token...');
+        post(testUrl).done(function (res) {
+            button.prop('disabled', false);
+            show(res && res.message ? res.message : 'Connection test did not return a result.');
+        }).fail(function () {
+            button.prop('disabled', false);
+            show('Connection test could not be completed. Reload the page and try again.');
+        });
+    });
+
+    $('#kiyoh-connect-disconnect').on('click', function () {
+        var button = $(this);
+        button.prop('disabled', true);
+        show('Disconnecting...');
+        post(disconnectUrl).done(function (res) {
+            button.prop('disabled', false);
+            show(res && res.message ? res.message : 'Disconnected.');
+            if (res && res.success) {
+                window.location.reload();
+            }
+        }).fail(function () {
+            button.prop('disabled', false);
+            show('Could not disconnect. Reload the page and try again.');
+        });
+    });
+});
+</script>

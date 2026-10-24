@@ -16,7 +16,7 @@ use Psr\Log\LoggerInterface;
 class ConfigHealthContextProvider implements HealthContextProviderInterface
 {
     private const PATH_LOCATION_ID = 'kiyoh_reviews/api_settings/location_id';
-    private const PATH_API_TOKEN = 'kiyoh_reviews/api_settings/api_token';
+    private const PATH_API_TOKEN = 'kiyoh_reviews/api_settings/api_token'; // preflight: ignore — Magento config path, not a secret
     private const PATH_MOBILE_URLS = 'kiyoh_reviews/api_settings/mobile_urls';
 
     /**
