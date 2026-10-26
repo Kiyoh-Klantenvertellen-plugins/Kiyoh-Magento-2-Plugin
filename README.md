@@ -62,6 +62,17 @@ Your developer or technical team will install the extension. The installation pr
 3. If the store is in production mode, run `php bin/magento setup:di:compile`
 4. Clear cache with `php bin/magento cache:flush`
 
+`composer require kiyoh/reviews` installs the newest version Packagist has indexed. This package has no `version` field; Packagist takes the number from Git tags (`v1.2.0`, `v1.3.0`, …). On 26 Oct 2026 Packagist was still serving **v1.2.0** (commit `7eda13a`) even though Git tag **v1.3.0** was already on GitHub. v1.2.0 breaks `bin/magento setup:upgrade` on PHP 8.4. v1.3.0 and later do not.
+
+Until a Packagist maintainer opens [kiyoh/reviews](https://packagist.org/packages/kiyoh/reviews) and clicks **Update**, install the fixed tag from Git:
+
+```
+composer config repositories.kiyoh-reviews vcs https://github.com/Kiyoh-Klantenvertellen-plugins/Kiyoh-Magento-2-Plugin.git
+composer require kiyoh/reviews:1.3.0
+```
+
+Use `dev-cursor/kiyoh-mobile-health-31a0` instead of `1.3.0` to install this branch (module version 1.5.0) before it is tagged.
+
 Once installed, you'll see a new "Kiyoh" section in your Magento admin panel under **Stores > Configuration**.
 
 **Compatibility Check:**
@@ -277,11 +288,12 @@ The refresh token is kept until Disconnect, until a manual token replaces it, or
 
 ## About This Extension
 
-**Versioning**: Composer/Packagist releases follow Git tags  
+**Versioning**: Composer/Packagist releases follow Git tags. There is no `version` field in `composer.json`.  
 **Compatibility**: Magento 2.4.6+ and PHP 8.2+  
 **Developer**: Kiyoh  
 **License**: Proprietary  
-**Latest release**: v1.5.0  
+**Module version on this branch**: 1.5.0  
+**Newest Git tag**: v1.3.0 (PHP 8.4 nullable-parameter fix). Packagist may still resolve v1.2.0 until a maintainer updates the package.  
 **Last Updated**: October 2026
 
 ---

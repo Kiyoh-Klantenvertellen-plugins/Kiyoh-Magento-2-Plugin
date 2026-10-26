@@ -14,6 +14,10 @@
 
 - `kiyoh:test-api` receives `OrderInterfaceFactory` through its constructor. It no longer calls `ObjectManager::getInstance()`.
 
+### Fixed
+
+- PHP 8.4 `setup:upgrade` guard. Implicitly nullable parameters (`string $name = null`) are a compile-time deprecation, and Magento developer mode turns that into an exception while loading console commands. Those signatures were corrected in 1.3.0. `php bin/lint-php84.php` (and the PHPUnit suite) now fails if that pattern, or another PHP 8.4 deprecation this lint knows about, comes back. Packagist was still serving 1.2.0, which has the bug; see the README install note.
+
 ## 1.4.0 - 2026-10-23
 
 ### Added
