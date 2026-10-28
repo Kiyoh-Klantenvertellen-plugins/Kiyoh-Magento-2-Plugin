@@ -279,12 +279,12 @@ The refresh token is kept until Disconnect, until a manual token replaces it, or
 
 ## About This Extension
 
-**Versioning**: Composer/Packagist releases follow Git tags. There is no `version` field in `composer.json`.  
+**Versioning**: `composer.json` `version`, `etc/module.xml` `setup_version`, and `Model/ModuleMeta::VERSION` are the same number. Packagist still publishes the Git tag.  
 **Compatibility**: Magento 2.4.6+ and PHP 8.2+  
 **Developer**: Kiyoh  
 **License**: Proprietary  
-**Module version on this branch**: 1.5.1  
-**Newest Git tag**: v1.5.1 (also served by Packagist).  
+**Module version on this branch**: 1.5.2  
+**Newest Git tag**: v1.5.1 (Packagist until v1.5.2 is tagged).  
 **Last Updated**: October 2026
 
 ---

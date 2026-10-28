@@ -13,7 +13,10 @@ class ModuleWiringTest extends TestCase
         $xml = simplexml_load_file(KIYOH_MODULE_ROOT . '/etc/module.xml');
         $this->assertNotFalse($xml);
         $this->assertSame(ModuleMeta::VERSION, (string) $xml->module['setup_version']);
-        $this->assertSame('1.5.1', ModuleMeta::VERSION);
+        $composer = json_decode((string) file_get_contents(KIYOH_MODULE_ROOT . '/composer.json'), true);
+        $this->assertIsArray($composer);
+        $this->assertSame(ModuleMeta::VERSION, $composer['version'] ?? null);
+        $this->assertSame('1.5.2', ModuleMeta::VERSION);
     }
 
     public function testMobileUrlConfigDefaultsToProductionAndStaging(): void

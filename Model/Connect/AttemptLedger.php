@@ -17,16 +17,23 @@ final class AttemptLedger implements PendingLoginStore
         $this->rows[$login->state] = $login;
     }
 
-    public function consume(string $state, int $now): ?PendingLogin
+    public function peek(string $state, int $now): ?PendingLogin
     {
         if (!isset($this->rows[$state])) {
             return null;
         }
         $login = $this->rows[$state];
-        unset($this->rows[$state]);
         if (!$login->isUsable($now) || !hash_equals($login->state, $state)) {
             return null;
         }
+
+        return $login;
+    }
+
+    public function consume(string $state, int $now): ?PendingLogin
+    {
+        $login = $this->peek($state, $now);
+        unset($this->rows[$state]);
 
         return $login;
     }

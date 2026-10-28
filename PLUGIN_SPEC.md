@@ -2,7 +2,7 @@
 
 **Shape:** A (Magento 2 module) + B (Kiyoh publication API and Kiyoh-Connect)  
 **Owner:** Kiyoh plugins  
-**Version:** 1.5.1
+**Version:** 1.5.2
 
 ## Host
 
@@ -15,7 +15,7 @@
 - **Invitations and catalog sync** (existing): order status triggers a review invite; product save/delete and cron sync product codes. Kiyoh publication API on `www.kiyoh.com` or `www.klantenvertellen.nl`.
 - **Health** (1.4.0, default hosts in 1.5.1): `POST {mobile}/api/integrations/health` per store view, once per comma-separated Kiyoh Mobile URL. The default is `https://kiyoh-mobile.com,https://kiyohmobileui-staging.up.railway.app`. A failure on one host is logged for that host and does not skip the others. See `Model/Health`.
 - **Sign-in** (1.5.0), Kiyoh-Connect 1.2.0 public client `kiyoh-magento2`:
-  1. `POST {issuer}/shops/register` JSON: `client_id`, `shop_url`, `redirect_uri`. No signature. HTTP 200 once returns `client_id`, `shop_origin`, `redirect_uri`, `shop_id`, `shop_secret`, and `status` (`active` or `pending`). The module stores the shop credential encrypted before the popup opens. The same return address reuses that credential and does not register again.
+  1. `POST {issuer}/shops/register` JSON: `client_id`, `shop_url`, `redirect_uri`. No signature. HTTP 200 once returns `client_id`, `shop_origin`, `redirect_uri`, `shop_id`, `shop_secret`, and `status` (`active` or `pending`). The module stores the shop credential encrypted on that scope before the popup opens. The same scope, issuer, and return address reuse that credential and do not register again. A default, website, or other store view credential is not reused.
   2. Popup `GET {issuer}/authorize` with `response_type=code`, `client_id`, `redirect_uri`, `scope=integration:connect`, `state`, `code_challenge`, `code_challenge_method=S256`.
   3. Browser returns to `https://{shop-host}/kiyoh/oauth/callback?code&state`.
   4. `POST {issuer}/token` form, `grant_type=authorization_code`: `client_id`, `shop_id`, `shop_secret`, `code`, `code_verifier`, `redirect_uri`. HTTP 401 `invalid_client` means the shop credential was rejected.
@@ -42,7 +42,7 @@ The private Kiyoh-Connect repository was not readable from the build environment
 ## Behaviour
 
 - Trigger: admin clicks Connect, Test connection, or Disconnect. Invitations remain on order status. Health remains on save, invite, product sync, and daily cron `30 4 * * *`.
-- Volume: one Connect registration per return address, then one token exchange per click. A later click with the same issuer and redirect URI reuses the stored shop credential and does not register again. Test connection is one statistics request, plus one refresh and one credentials call only when that statistics call fails and both a refresh token and a shop credential exist.
+- Volume: one Connect registration per scope and return address, then one token exchange per click. A later click on that same scope with the same issuer and redirect URI reuses the stored shop credential and does not register again. A callback saves credentials only when the browser returns to that scope's `https://{shop-host}/kiyoh/oauth/callback`. Test connection is one statistics request, plus one refresh and one credentials call only when that statistics call fails and both a refresh token and a shop credential exist.
 - Failure policy: Connect and publication errors become one sentence in the admin. They are not thrown into the order flow. 429 does not mark the login as accepted and does not write location credentials. A network or TLS failure does not clear a previously saved token. A 2xx register body without a shop credential, or HTTP 409, is an error when this shop has nothing stored. If the return address or server changed and Connect does not issue a new credential, the admin is told to disconnect and connect again.
 - Idempotency key: `state` is single-use (deleted on read). Saving credentials overwrites the same config paths. Token revoke treats HTTP 400 as already revoked. Shop revoke treats HTTP 404 as already removed. Disconnect deletes the local shop credential only after the shop revoke succeeds, unless another scope still stores the same shop id (then only this scope's copy and its refresh token are removed).
 - Resume: closing the popup before login leaves the shop credential stored so the next click can continue. The pending row expires after 15 minutes. Repeating Connect starts a new `state`. Killing the callback after Connect has issued the code requires a new click (the code is single-use at Connect).
@@ -62,7 +62,7 @@ The private Kiyoh-Connect repository was not readable from the build environment
 
 ## Acceptance test
 
-1. Connect on a store view opens `connect.kiyoh.com` or `connect.klantenvertellen.nl`, returns to `https://{that-host}/kiyoh/oauth/callback`, and saves that location's ID and invite API key. No environment secret is required. Test connection reports success. A second Connect on the same return address overwrites the same fields and does not expect a second shop credential.
+1. Connect on a store view opens `connect.kiyoh.com` or `connect.klantenvertellen.nl`, returns to `https://{that-host}/kiyoh/oauth/callback`, and saves that location's ID and invite API key. No environment secret is required. Test connection reports success. A second Connect on the same scope and return address overwrites the same fields and does not expect a second shop credential. Another store view, or a switch of Server after Disconnect, registers its own shop.
 2. Disconnect clears a Connect-sourced token and revokes the shop when this scope holds the only copy. A pasted token still saves and still passes Test connection. The pasted token does not delete the shop credential.
 3. Replaying the callback, or waiting out the 15 minute pending login, does not create a second credential set.
 4. HTTP 429 on the token request shows a retry message and does not save a token (`tests/fixtures/kiyoh-connect/rate-limited.json`).
