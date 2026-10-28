@@ -1,0 +1,25 @@
+name: PHP 8.4
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          tools: none
+
+      - name: Lint for PHP 8.4 deprecations
+        run: php bin/lint-php84.php --require-php84
+
+      - name: Unit and integration tests
+        run: |
+          curl -fsSL -o /tmp/phpunit.phar https://phar.phpunit.de/phpunit-9.6.23.phar
+          php /tmp/phpunit.phar -c Test/phpunit.xml

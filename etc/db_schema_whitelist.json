@@ -1,0 +1,22 @@
+{
+    "kiyoh_reviews_shop_health": {
+        "column": {
+            "store_id": true,
+            "state_json": true,
+            "updated_at": true
+        },
+        "constraint": {
+            "PRIMARY": true
+        }
+    },
+    "kiyoh_reviews_connect_login": {
+        "column": {
+            "state": true,
+            "payload": true,
+            "expires_at": true
+        },
+        "constraint": {
+            "KIYOH_CONNECT_LOGIN_STATE": true
+        }
+    }
+}

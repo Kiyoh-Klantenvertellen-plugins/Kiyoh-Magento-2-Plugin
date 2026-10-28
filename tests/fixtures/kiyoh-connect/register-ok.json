@@ -1,0 +1,8 @@
+{
+  "client_id": "kiyoh-magento2",
+  "shop_origin": "https://shop.example",
+  "redirect_uri": "https://shop.example/kiyoh/oauth/callback",
+  "shop_id": "shop-1",
+  "shop_secret": "sec-1",
+  "status": "active"
+}

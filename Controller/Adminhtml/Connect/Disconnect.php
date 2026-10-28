@@ -1,0 +1,47 @@
+<?php
+
+namespace Kiyoh\Reviews\Controller\Adminhtml\Connect;
+
+use Kiyoh\Reviews\Model\Connect\AdminConnectService;
+use Magento\Backend\App\Action;
+use Magento\Backend\App\Action\Context;
+use Magento\Framework\App\Action\HttpPostActionInterface;
+use Magento\Framework\Controller\Result\JsonFactory;
+
+class Disconnect extends Action implements HttpPostActionInterface
+{
+    public const ADMIN_RESOURCE = 'Kiyoh_Reviews::config';
+
+    /**
+     * @var JsonFactory
+     */
+    private $jsonFactory;
+
+    /**
+     * @var AdminConnectService
+     */
+    private $connect;
+
+    public function __construct(Context $context, JsonFactory $jsonFactory, AdminConnectService $connect)
+    {
+        parent::__construct($context);
+        $this->jsonFactory = $jsonFactory;
+        $this->connect = $connect;
+    }
+
+    public function execute()
+    {
+        $request = $this->getRequest();
+        $result = $this->connect->disconnect(
+            (string) $request->getParam('store', ''),
+            (string) $request->getParam('website', '')
+        );
+        if (!empty($result['success'])) {
+            $this->messageManager->addSuccessMessage((string) $result['message']);
+        } else {
+            $this->messageManager->addErrorMessage((string) ($result['message'] ?? 'Could not disconnect.'));
+        }
+
+        return $this->jsonFactory->create()->setData($result);
+    }
+}

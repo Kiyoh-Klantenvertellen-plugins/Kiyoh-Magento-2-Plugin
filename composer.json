@@ -37,7 +37,11 @@
         }
     },
     "scripts": {
-        "test": "phpunit -c Test/phpunit.xml",
+        "lint-php84": "php bin/lint-php84.php",
+        "test": [
+            "@lint-php84",
+            "phpunit -c Test/phpunit.xml"
+        ],
         "test-unit": "phpunit -c Test/phpunit.xml --testsuite=\"Unit Tests\"",
         "test-integration": "phpunit -c Test/phpunit.xml --testsuite=\"Integration Tests\"",
         "test-coverage": "phpunit -c Test/phpunit.xml --coverage-html Test/coverage"

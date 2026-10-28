@@ -4,6 +4,7 @@ namespace Kiyoh\Reviews\Service;
 
 use Kiyoh\Reviews\Api\ApiServiceInterface;
 use Kiyoh\Reviews\Helper\ProductCode;
+use Kiyoh\Reviews\Model\Health\HealthReporter;
 use Magento\Catalog\Model\Product\Attribute\Source\Status;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\Encryption\EncryptorInterface;
@@ -18,7 +19,7 @@ class ApiService implements ApiServiceInterface
     private const CONFIG_PATH_ENABLED = 'kiyoh_reviews/api_settings/enabled';
     private const CONFIG_PATH_SERVER = 'kiyoh_reviews/api_settings/server';
     private const CONFIG_PATH_LOCATION_ID = 'kiyoh_reviews/api_settings/location_id';
-    private const CONFIG_PATH_API_TOKEN = 'kiyoh_reviews/api_settings/api_token';
+    private const CONFIG_PATH_API_TOKEN = 'kiyoh_reviews/api_settings/api_token'; // preflight: ignore — Magento config path, not a secret
     private const CONFIG_PATH_INVITATIONS_ENABLED = 'kiyoh_reviews/review_invitations/enabled';
     private const CONFIG_PATH_INVITATION_TYPE = 'kiyoh_reviews/review_invitations/invitation_type';
     private const CONFIG_PATH_FALLBACK_LANGUAGE = 'kiyoh_reviews/review_invitations/fallback_language';
@@ -55,18 +56,25 @@ class ApiService implements ApiServiceInterface
      */
     private $productCodeHelper;
 
+    /**
+     * @var HealthReporter
+     */
+    private $healthReporter;
+
     public function __construct(
         ScopeConfigInterface $scopeConfig,
         EncryptorInterface $encryptor,
         LoggerInterface $logger,
         LocaleResolver $localeResolver,
-        ProductCode $productCodeHelper
+        ProductCode $productCodeHelper,
+        HealthReporter $healthReporter
     ) {
         $this->scopeConfig = $scopeConfig;
         $this->encryptor = $encryptor;
         $this->logger = $logger;
         $this->localeResolver = $localeResolver;
         $this->productCodeHelper = $productCodeHelper;
+        $this->healthReporter = $healthReporter;
     }
 
     public function sendShopInvitation(OrderInterface $order): bool
@@ -136,9 +144,9 @@ class ApiService implements ApiServiceInterface
 
     public function syncProduct(ProductInterface $product): bool
     {
-        try {
-            $storeId = $product->getStoreId() ?: 0;
+        $storeId = (int) ($product->getStoreId() ?: 0);
 
+        try {
             if (!$this->isEnabled($storeId)) {
                 $this->logger->debug('Kiyoh API: Product sync skipped - API disabled', [
                     'product_sku' => $product->getSku()
@@ -154,6 +162,7 @@ class ApiService implements ApiServiceInterface
                 'exception' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
+            $this->reportProductSync($storeId, false, null, $e->getMessage(), []);
             return false;
         }
     }
@@ -164,8 +173,10 @@ class ApiService implements ApiServiceInterface
             return ['success' => 0, 'failed' => 0, 'errors' => []];
         }
 
+        $storeId = 0;
+
         try {
-            $storeId = $products[0]->getStoreId() ?: 0;
+            $storeId = (int) ($products[0]->getStoreId() ?: 0);
 
             if (!$this->isEnabled($storeId)) {
                 $this->logger->debug('Kiyoh API: Bulk product sync skipped - API disabled');
@@ -225,6 +236,7 @@ class ApiService implements ApiServiceInterface
                 'exception' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
+            $this->reportProductSync($storeId, false, null, $e->getMessage(), []);
             return ['success' => 0, 'failed' => count($products), 'errors' => ['Critical error: ' . $e->getMessage()]];
         }
     }
@@ -248,6 +260,7 @@ class ApiService implements ApiServiceInterface
 
         try {
             $ch = curl_init($url);
+            $this->applyTlsVerification($ch);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_TIMEOUT, self::TIMEOUT_REVIEWS);
             curl_setopt($ch, CURLOPT_HTTPHEADER, [
@@ -300,6 +313,7 @@ class ApiService implements ApiServiceInterface
 
         try {
             $ch = curl_init($url);
+            $this->applyTlsVerification($ch);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_TIMEOUT, self::TIMEOUT_REVIEWS);
             curl_setopt($ch, CURLOPT_HTTPHEADER, [
@@ -512,12 +526,14 @@ class ApiService implements ApiServiceInterface
                 'store_id' => $storeId,
                 'email' => $data['invite_email'] ?? 'unknown'
             ]);
+            $this->reportInvite($storeId, false, null, 'missing api token');
             return ['success' => false, 'error_code' => 'MISSING_TOKEN', 'message' => 'Missing API token'];
         }
 
         $data['product_invite'] = $productInvite;
 
         $url = sprintf('%s/v1/invite/external', $server);
+        $httpCode = null;
 
         $this->logger->info('Kiyoh API: Sending invitation request', [
             'url' => $url,
@@ -531,6 +547,7 @@ class ApiService implements ApiServiceInterface
 
         try {
             $ch = curl_init($url);
+            $this->applyTlsVerification($ch);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_TIMEOUT, self::TIMEOUT_INVITATION);
             curl_setopt($ch, CURLOPT_POST, true);
@@ -551,6 +568,7 @@ class ApiService implements ApiServiceInterface
                     'curl_error' => $curlError,
                     'url' => $url
                 ]);
+                $this->reportInvite($storeId, false, $httpCode ?: null, $curlError !== '' ? $curlError : 'request failed');
                 return ['success' => false, 'error_code' => 'CURL_ERROR', 'message' => $curlError];
             }
 
@@ -570,6 +588,7 @@ class ApiService implements ApiServiceInterface
                     'json_error' => json_last_error_msg(),
                     'http_code' => $httpCode
                 ]);
+                $this->reportInvite($storeId, false, $httpCode ?: null, 'invalid response');
                 return ['success' => false, 'error_code' => 'INVALID_JSON', 'message' => json_last_error_msg()];
             }
 
@@ -584,6 +603,7 @@ class ApiService implements ApiServiceInterface
                     'http_code' => $httpCode
                 ]);
                 
+                $this->reportInvite($storeId, false, $httpCode ?: null, (string) $errorCode);
                 return [
                     'success' => false, 
                     'error_code' => $errorCode, 
@@ -598,6 +618,7 @@ class ApiService implements ApiServiceInterface
                 'http_code' => $httpCode
             ]);
             
+            $this->reportInvite($storeId, true, $httpCode ?: null, null);
             return [
                 'success' => true, 
                 'error_code' => null, 
@@ -611,7 +632,8 @@ class ApiService implements ApiServiceInterface
                 'exception_trace' => $e->getTraceAsString(),
                 'request_data' => $data
             ]);
-            
+
+            $this->reportInvite($storeId, false, $httpCode ?? null, $e->getMessage());
             return ['success' => false, 'error_code' => 'EXCEPTION', 'message' => $e->getMessage()];
         }
     }
@@ -625,17 +647,21 @@ class ApiService implements ApiServiceInterface
             $this->logger->error('Kiyoh API: Missing API token for product sync', [
                 'product' => $productData['product_code'] ?? 'unknown'
             ]);
+            $this->reportProductSync($storeId, false, null, 'missing api token', []);
             return false;
         }
 
         $url = sprintf('%s/v1/location/product/external', $server);
+        $httpCode = null;
+        $productCode = isset($productData['product_code']) ? [(string) $productData['product_code']] : [];
 
         try {
             $ch = curl_init($url);
             if ($ch === false) {
                 throw new \RuntimeException('Failed to initialize cURL');
             }
-            
+            $this->applyTlsVerification($ch);
+
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_TIMEOUT, self::TIMEOUT_INVITATION);
             curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PUT');
@@ -656,6 +682,7 @@ class ApiService implements ApiServiceInterface
                     'curl_error' => $curlError,
                     'url' => $url
                 ]);
+                $this->reportProductSync($storeId, false, $httpCode ?: null, $curlError !== '' ? $curlError : 'request failed', []);
                 return false;
             }
 
@@ -668,6 +695,7 @@ class ApiService implements ApiServiceInterface
                     'response' => substr($response, 0, 500),
                     'json_error' => json_last_error_msg()
                 ]);
+                $this->reportProductSync($storeId, false, $httpCode ?: null, 'invalid response', []);
                 return false;
             }
 
@@ -677,6 +705,7 @@ class ApiService implements ApiServiceInterface
                     'product' => $productData['product_code'] ?? 'unknown',
                     'http_code' => $httpCode
                 ]);
+                $this->reportProductSync($storeId, false, $httpCode ?: null, (string) $responseData['errorCode'], []);
                 return false;
             }
 
@@ -684,6 +713,7 @@ class ApiService implements ApiServiceInterface
                 'product' => $productData['product_code'] ?? 'unknown',
                 'http_code' => $httpCode
             ]);
+            $this->reportProductSync($storeId, true, $httpCode ?: null, null, $productCode);
             return true;
         } catch (\Exception $e) {
             $this->logger->error('Kiyoh API: Product sync exception', [
@@ -691,6 +721,7 @@ class ApiService implements ApiServiceInterface
                 'product' => $productData['product_code'] ?? 'unknown',
                 'trace' => $e->getTraceAsString()
             ]);
+            $this->reportProductSync($storeId, false, $httpCode ?? null, $e->getMessage(), []);
             return false;
         }
     }
@@ -707,6 +738,7 @@ class ApiService implements ApiServiceInterface
             $this->logger->error('Kiyoh API: Missing API token for bulk product sync');
             $result['failed'] = count($productsData);
             $result['errors'][] = 'Missing API token';
+            $this->reportProductSync($storeId, false, null, 'missing api token', []);
             return $result;
         }
 
@@ -721,13 +753,21 @@ class ApiService implements ApiServiceInterface
         ];
 
         $url = sprintf('%s/v1/location/product/external/bulk', $server);
+        $httpCode = null;
+        $productCodes = [];
+        foreach ($productsData as $productData) {
+            if (isset($productData['product_code']) && is_string($productData['product_code'])) {
+                $productCodes[] = $productData['product_code'];
+            }
+        }
 
         try {
             $ch = curl_init($url);
             if ($ch === false) {
                 throw new \RuntimeException('Failed to initialize cURL');
             }
-            
+            $this->applyTlsVerification($ch);
+
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_TIMEOUT, self::TIMEOUT_INVITATION * 5);
             curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PUT');
@@ -750,6 +790,7 @@ class ApiService implements ApiServiceInterface
                 ]);
                 $result['failed'] = count($productsData);
                 $result['errors'][] = 'cURL request failed: ' . $curlError;
+                $this->reportProductSync($storeId, false, $httpCode ?: null, $curlError !== '' ? $curlError : 'request failed', []);
                 return $result;
             }
 
@@ -764,6 +805,7 @@ class ApiService implements ApiServiceInterface
                 ]);
                 $result['failed'] = count($productsData);
                 $result['errors'][] = 'Invalid JSON response: ' . json_last_error_msg();
+                $this->reportProductSync($storeId, false, $httpCode ?: null, 'invalid response', []);
                 return $result;
             }
 
@@ -775,6 +817,7 @@ class ApiService implements ApiServiceInterface
                 ]);
                 $result['failed'] = count($productsData);
                 $result['errors'][] = $responseData['errorCode'] . ': ' . ($responseData['message'] ?? 'Unknown error');
+                $this->reportProductSync($storeId, false, $httpCode ?: null, (string) $responseData['errorCode'], []);
                 return $result;
             }
 
@@ -783,6 +826,7 @@ class ApiService implements ApiServiceInterface
                 'count' => count($productsData),
                 'http_code' => $httpCode
             ]);
+            $this->reportProductSync($storeId, true, $httpCode ?: null, null, $productCodes);
         } catch (\Exception $e) {
             $this->logger->error('Kiyoh API: Bulk product sync exception', [
                 'exception' => $e->getMessage(),
@@ -791,6 +835,7 @@ class ApiService implements ApiServiceInterface
             ]);
             $result['failed'] = count($productsData);
             $result['errors'][] = 'Exception: ' . $e->getMessage();
+            $this->reportProductSync($storeId, false, $httpCode ?? null, $e->getMessage(), []);
         }
 
         return $result;
@@ -879,6 +924,17 @@ class ApiService implements ApiServiceInterface
         return $fallback;
     }
 
+    /**
+     * Certificate and hostname checks stay on for every outbound Kiyoh call.
+     *
+     * @param \CurlHandle|resource $ch
+     */
+    private function applyTlsVerification($ch): void
+    {
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
+    }
+
     private function getServerUrl(int $storeId): string
     {
         $server = $this->getConfig(self::CONFIG_PATH_SERVER, $storeId);
@@ -925,9 +981,9 @@ class ApiService implements ApiServiceInterface
 
         try {
             $ch = curl_init($url);
+            $this->applyTlsVerification($ch);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_TIMEOUT, self::TIMEOUT_REVIEWS);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 
             $response = curl_exec($ch);
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -974,6 +1030,7 @@ class ApiService implements ApiServiceInterface
 
         try {
             $ch = curl_init($url);
+            $this->applyTlsVerification($ch);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_TIMEOUT, self::TIMEOUT_REVIEWS);
             curl_setopt($ch, CURLOPT_HTTPHEADER, [
@@ -1039,5 +1096,40 @@ class ApiService implements ApiServiceInterface
         ];
 
         return $serverMap[$server] ?? 'https://www.kiyoh.com';
+    }
+
+    /**
+     * Health reporting must not change the invitation result or interrupt the caller.
+     */
+    private function reportInvite(int $storeId, bool $success, ?int $httpStatus, ?string $errorMessage): void
+    {
+        try {
+            $this->healthReporter->noteInvite($storeId, $success, $httpStatus, $errorMessage);
+        } catch (\Throwable $e) {
+            $this->logger->error('Kiyoh health: invite report failed', [
+                'store_id' => $storeId,
+                'exception' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * @param list<string> $productCodes
+     */
+    private function reportProductSync(
+        int $storeId,
+        bool $success,
+        ?int $httpStatus,
+        ?string $errorMessage,
+        array $productCodes
+    ): void {
+        try {
+            $this->healthReporter->noteProductSync($storeId, $success, $httpStatus, $errorMessage, $productCodes);
+        } catch (\Throwable $e) {
+            $this->logger->error('Kiyoh health: product sync report failed', [
+                'store_id' => $storeId,
+                'exception' => $e->getMessage(),
+            ]);
+        }
     }
 }

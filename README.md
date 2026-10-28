@@ -62,6 +62,17 @@ Your developer or technical team will install the extension. The installation pr
 3. If the store is in production mode, run `php bin/magento setup:di:compile`
 4. Clear cache with `php bin/magento cache:flush`
 
+`composer require kiyoh/reviews` installs the newest version Packagist has indexed. This package has no `version` field; Packagist takes the number from Git tags (`v1.2.0`, `v1.3.0`, …). On 26 Oct 2026 Packagist was still serving **v1.2.0** (commit `7eda13a`) even though Git tag **v1.3.0** was already on GitHub. v1.2.0 breaks `bin/magento setup:upgrade` on PHP 8.4. v1.3.0 and later do not.
+
+Until a Packagist maintainer opens [kiyoh/reviews](https://packagist.org/packages/kiyoh/reviews) and clicks **Update**, install the fixed tag from Git:
+
+```
+composer config repositories.kiyoh-reviews vcs https://github.com/Kiyoh-Klantenvertellen-plugins/Kiyoh-Magento-2-Plugin.git
+composer require kiyoh/reviews:1.3.0
+```
+
+Use `dev-cursor/kiyoh-mobile-health-31a0` instead of `1.3.0` to install this branch (module version 1.5.0) before it is tagged.
+
 Once installed, you'll see a new "Kiyoh" section in your Magento admin panel under **Stores > Configuration**.
 
 **Compatibility Check:**
@@ -81,9 +92,24 @@ In the **API Settings** section:
 - **Server**: Select your platform (e.g., klantenvertellen.nl)
 - **Location ID**: Enter your Location ID
 - **API Token**: Enter your API Token
+- **Kiyoh Mobile URL(s)**: Leave the default `https://kiyoh-mobile.com`, or enter a comma-separated list when this store view should also report to another Kiyoh Mobile host (for example `https://kiyohmobileui-staging.up.railway.app`)
 - Click **Save Config**
 
-The system will automatically verify your credentials when you save.
+#### Connect with Kiyoh / Klantenvertellen
+
+On the same API Settings group, **Connect with Kiyoh / Klantenvertellen** signs the merchant in through Kiyoh-Connect instead of pasting a token. Pick the Server (`kiyoh.com` uses `https://connect.kiyoh.com`, `klantenvertellen.nl` uses `https://connect.klantenvertellen.nl`), save if you changed it, then click Connect. A window opens for the Kiyoh or Klantenvertellen login. After the merchant picks a location, this shop's Location ID and API token are filled in for the current scope.
+
+**Test connection** checks the saved Location ID and API token with one statistics call and shows a short success or failure message.
+
+**Disconnect** revokes the Kiyoh-Connect session. If the credentials came from Connect, the Location ID and API token are cleared. A token that was pasted by hand is left in place.
+
+The manual Location ID and API Token fields are unchanged and remain the fallback for existing installs. Pasting a token does not remove the shop credential Connect already issued.
+
+No shared HMAC key or client secret is configured on the shop. The module registers itself with Kiyoh-Connect, stores the one-time shop credential encrypted, and sends that credential on token, refresh, and revoke calls.
+
+The browser returns to `https://{shop-host}/kiyoh/oauth/callback` (the shop host, not the Magento admin path and not a store-code prefix). The vhost must route that path to Magento. `Add Store Code to Urls` is not part of that return address.
+
+The system will automatically verify your credentials when you save. Saving also sends this store view's integration health to each Kiyoh Mobile URL.
 
 #### Configure Review Invitations
 
@@ -155,6 +181,14 @@ Configure **each store view** separately (Stores → Configuration → store-vie
 4. Save, then run Bulk Product Sync for that store view
 
 Invitations always use the order’s `store_id` to pick credentials, so eurobedden.nl and bed4you.nl (or any two storefronts) can each send to their own location.
+
+### Kiyoh Mobile health
+
+Each store view that has a Location ID and API token reports its own shop to Kiyoh Mobile. The shop id is the store's secure base host. A store view other than the default view also includes its store code, so two views on one domain stay separate.
+
+Health is sent when you save the Kiyoh configuration, when an invitation is sent or fails, when products are synced, and once a day by cron (`kiyoh_reviews_mobile_health`). The same payload is sent again after 24 hours. Each call uses a short timeout. A slow or unavailable health endpoint leaves orders and invitations running.
+
+The report includes connection status, invitation results from the last 24 hours, and up to 500 synced product codes. This module records no incoming webhooks and does not inject a review widget, and the health payload says so.
 
 ### Product codes (SKU rules)
 
@@ -228,13 +262,38 @@ Customers receive a personalized email in their language with:
 4. **Take It Offline**: Invite them to contact you directly
 5. **Learn and Improve**: Use feedback to improve your service
 
+## Permissions, stored data, and uninstall
+
+### Permissions
+
+- **Admin ACL** `Kiyoh_Reviews::config` (under Stores → Configuration). Anyone who can edit this configuration can connect, test, disconnect, and read the saved token. No other Magento ACL is requested.
+- **Storefront route** `https://{shop-host}/kiyoh/oauth/callback` is public because Kiyoh-Connect redirects the merchant's browser there. It finishes a sign-in only when `state` matches a pending login an admin started in the last 15 minutes. It does not print the API token.
+- **Outbound HTTPS**, certificate checks on: `connect.kiyoh.com`, `connect.klantenvertellen.nl`, `www.kiyoh.com`, `www.klantenvertellen.nl`, and each configured Kiyoh Mobile URL.
+- **OAuth scope** `integration:connect` only. The module does not ask Kiyoh for any broader scope.
+
+### Data stored
+
+- **Configuration** (`core_config_data`, per default / website / store scope): Server, Location ID, API token (encrypted), credential source (`connect` or `manual`), Kiyoh-Connect refresh token and access token (encrypted), access-token expiry, location name, the last Connect result message, and the one-time shop credential (`shop_id` and `shop_secret`, both encrypted) plus the issuer and return address it was registered for. The shop credential is not shown on the configuration form.
+- **`kiyoh_reviews_connect_login`**: one row per in-progress sign-in (encrypted PKCE verifier, return address, scope). The row is deleted when the callback runs or after 15 minutes.
+- **`kiyoh_reviews_shop_health`**: one row per store view with the latest health payload state (not a history).
+
+Customer name, email, and order id are sent to Kiyoh when an invitation is sent. They are not copied into these tables. Tokens are not written to the Magento log.
+
+The refresh token is kept until Disconnect, until a manual token replaces it, or until uninstall. The shop credential is kept when a manual token is saved, because Connect returns it only once. Disconnect removes it after the shop registration is revoked. Kiyoh-Connect refresh tokens last 30 days on the Connect side. Access tokens last about 1 hour. Health rows are overwritten in place.
+
+### Uninstall
+
+- `bin/magento module:disable Kiyoh_Reviews` stops the module and **keeps** configuration, the health table, and any Connect session.
+- `bin/magento module:uninstall -r Kiyoh_Reviews` drops `kiyoh_reviews_shop_health` and `kiyoh_reviews_connect_login`, deletes `core_config_data` paths under `kiyoh_reviews/`, and best-effort calls Kiyoh-Connect `POST /revoke` and `POST /shops/revoke` with each stored shop credential. A scope with no shop credential is logged and skipped for the remote call. Local data is still removed. Orders, customers, and other modules' tables are not touched.
+
 ## About This Extension
 
-**Versioning**: Composer/Packagist releases follow Git tags  
+**Versioning**: Composer/Packagist releases follow Git tags. There is no `version` field in `composer.json`.  
 **Compatibility**: Magento 2.4.6+ and PHP 8.2+  
 **Developer**: Kiyoh  
 **License**: Proprietary  
-**Latest release**: v1.3.0  
+**Module version on this branch**: 1.5.0  
+**Newest Git tag**: v1.3.0 (PHP 8.4 nullable-parameter fix). Packagist may still resolve v1.2.0 until a maintainer updates the package.  
 **Last Updated**: October 2026
 
 ---
