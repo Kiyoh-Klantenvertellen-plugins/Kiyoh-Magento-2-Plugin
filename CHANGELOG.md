@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.5.1 - 2026-10-28
+
+### Changed
+
+- The default **Kiyoh Mobile URL(s)** value is `https://kiyoh-mobile.com,https://kiyohmobileui-staging.up.railway.app`. Health reports go to production and staging. A failure on one host is logged for that host and does not stop the push to the other. Production currently returns HTTP 404 on `/api/integrations/health`; that response is logged on its own and staging is still reported. A store view that saved the previous default (`https://kiyoh-mobile.com`) is updated to the new default on `setup:upgrade`. Any other saved list is left unchanged.
+
 ## 1.5.0 - 2026-10-24
 
 ### Security

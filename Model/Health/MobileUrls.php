@@ -7,30 +7,36 @@ namespace Kiyoh\Reviews\Model\Health;
  */
 final class MobileUrls
 {
-    public const DEFAULT_URL = 'https://kiyoh-mobile.com';
+    /**
+     * Comma-separated default. Keep this identical to etc/config.xml mobile_urls.
+     */
+    public const DEFAULT_URLS = 'https://kiyoh-mobile.com,https://kiyohmobileui-staging.up.railway.app';
 
     /**
      * @return list<string>
      */
     public static function parse(?string $value): array
     {
-        $value = trim((string) $value);
-        if ($value === '') {
-            $value = self::DEFAULT_URL;
+        $urls = self::collect($value);
+        if ($urls === []) {
+            return self::collect(self::DEFAULT_URLS);
         }
 
+        return $urls;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function collect(?string $value): array
+    {
         $urls = [];
-        foreach (explode(',', $value) as $segment) {
+        foreach (explode(',', trim((string) $value)) as $segment) {
             $normalized = self::normalize(trim($segment));
             if ($normalized === null || isset($urls[$normalized])) {
                 continue;
             }
             $urls[$normalized] = true;
-        }
-
-        if ($urls === []) {
-            $fallback = self::normalize(self::DEFAULT_URL);
-            return $fallback === null ? [] : [$fallback];
         }
 
         return array_keys($urls);

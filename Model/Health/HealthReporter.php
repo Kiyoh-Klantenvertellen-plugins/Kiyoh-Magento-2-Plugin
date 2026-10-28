@@ -7,7 +7,9 @@ namespace Kiyoh\Reviews\Model\Health;
  *
  * A report is sent when the payload changes, and again when the last accepted
  * report is at least 24 hours old. HTTP 429 delays that URL until Retry-After.
- * Failures are logged and never thrown, so order processing keeps running.
+ * Each host is posted and logged on its own: a failure, including HTTP 404,
+ * does not stop the remaining hosts. Failures are never thrown, so order
+ * processing keeps running.
  */
 class HealthReporter
 {

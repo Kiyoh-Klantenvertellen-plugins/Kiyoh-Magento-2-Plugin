@@ -295,6 +295,63 @@ class HealthReporterTest extends TestCase
         $this->assertTrue($this->logger->containsMessage('health push failed'));
     }
 
+    public function testProduction404DoesNotStopStagingAndEachHostIsLoggedAlone(): void
+    {
+        $production = 'https://kiyoh-mobile.com';
+        $staging = 'https://kiyohmobileui-staging.up.railway.app';
+        $this->contexts->contexts[1] = $this->context(1, [$production, $staging]);
+        $this->transport->responder = function (string $url) {
+            if (strpos($url, 'kiyoh-mobile.com/') !== false) {
+                return new HealthTransportResponse(404, 'not found', null);
+            }
+
+            return new HealthTransportResponse(200, '{}', null);
+        };
+
+        $this->reporter->noteConnection(1, 'ok', null);
+
+        $this->assertSame(
+            [
+                $production . HealthReporter::HEALTH_PATH,
+                $staging . HealthReporter::HEALTH_PATH,
+            ],
+            array_column($this->transport->requests, 'url')
+        );
+        $failures = $this->entriesFor('health push failed');
+        $this->assertCount(1, $failures);
+        $this->assertSame('warning', $failures[0]['level']);
+        $this->assertSame($production, $failures[0]['context']['mobileBase']);
+        $this->assertSame(404, $failures[0]['context']['httpStatus']);
+        $this->assertSame([], $this->entriesFor('health push threw'));
+
+        $this->transport->requests = [];
+        $this->logger->entries = [];
+        $this->transport->responder = function (string $url) use ($production) {
+            if (strpos($url, $production) === 0) {
+                throw new \RuntimeException('production down');
+            }
+
+            return new HealthTransportResponse(503, '{}', null);
+        };
+        $this->reporter->noteInvite(1, true, 200, null);
+
+        $this->assertSame(
+            [
+                $production . HealthReporter::HEALTH_PATH,
+                $staging . HealthReporter::HEALTH_PATH,
+            ],
+            array_column($this->transport->requests, 'url')
+        );
+        $threw = $this->entriesFor('health push threw');
+        $failed = $this->entriesFor('health push failed');
+        $this->assertCount(1, $threw);
+        $this->assertCount(1, $failed);
+        $this->assertSame($production, $threw[0]['context']['mobileBase']);
+        $this->assertSame('production down', $threw[0]['context']['error']);
+        $this->assertSame($staging, $failed[0]['context']['mobileBase']);
+        $this->assertSame(503, $failed[0]['context']['httpStatus']);
+    }
+
     public function testOneRejectedUrlKeepsTheOtherUrlRetrying(): void
     {
         $this->contexts->contexts[1] = $this->context(1, [
@@ -464,6 +521,21 @@ class HealthReporterTest extends TestCase
 
         $this->assertSame('unknown', $body['connection']['status']);
         $this->assertNull($body['connection']['lastError']);
+    }
+
+    /**
+     * @return list<array{level: string, message: string, context: array<string, mixed>}>
+     */
+    private function entriesFor(string $message): array
+    {
+        $matched = [];
+        foreach ($this->logger->entries as $entry) {
+            if ($entry['message'] === $message) {
+                $matched[] = $entry;
+            }
+        }
+
+        return $matched;
     }
 
     /**
