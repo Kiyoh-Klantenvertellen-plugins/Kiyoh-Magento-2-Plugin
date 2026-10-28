@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.5.2 - 2026-10-28
+
+### Fixed
+
+- Kiyoh-Connect no longer reports success when the browser is still on an error at connect.kiyoh.com or connect.klantenvertellen.nl. A callback saves Location ID and API token only when the browser itself returns to this store view's `https://{shop-host}/kiyoh/oauth/callback`.
+- Each store view registers its own shop credential and uses its own secure base URL. A default, website, or other store view registration is not reused, including after Disconnect and a switch from kiyoh.com to klantenvertellen.nl. A callback that arrives on a different host does not save a second credential set.
+
 ## 1.5.1 - 2026-10-28
 
 ### Changed

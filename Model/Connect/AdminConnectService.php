@@ -133,12 +133,12 @@ class AdminConnectService
             if (isset($target['error'])) {
                 return ['done' => false];
             }
-            $stored = $this->read(ConnectConfig::LAST_ATTEMPT, $target);
+            $stored = $this->readExact($target, ConnectConfig::LAST_ATTEMPT);
             if (!is_string($stored) || strlen($stored) !== strlen($attempt) || !hash_equals($stored, $attempt)) {
                 return ['done' => false];
             }
-            $ok = $this->read(ConnectConfig::LAST_OK, $target) === '1';
-            $message = $this->read(ConnectConfig::LAST_MESSAGE, $target)
+            $ok = $this->readExact($target, ConnectConfig::LAST_OK) === '1';
+            $message = $this->readExact($target, ConnectConfig::LAST_MESSAGE)
                 ?? ($ok ? 'Connected.' : 'Kiyoh-Connect sign-in did not finish.');
 
             return ['done' => true, 'ok' => $ok, 'message' => $message];
@@ -151,10 +151,15 @@ class AdminConnectService
     /**
      * @return array{ok:bool,message:string}
      */
-    public function completeCallback(string $code, string $state, string $error): array
-    {
+    public function completeCallback(
+        string $code,
+        string $state,
+        string $error,
+        string $requestHost = '',
+        bool $browserReturn = true
+    ): array {
         try {
-            return $this->completeInner($code, $state, $error);
+            return $this->completeInner($code, $state, $error, $requestHost, $browserReturn);
         } catch (\Throwable $e) {
             $this->logger->error('Kiyoh Connect: callback failed', ['exception' => $e->getMessage()]);
             return [
@@ -268,8 +273,13 @@ class AdminConnectService
     /**
      * @return array{ok:bool,message:string}
      */
-    private function completeInner(string $code, string $state, string $error): array
-    {
+    private function completeInner(
+        string $code,
+        string $state,
+        string $error,
+        string $requestHost,
+        bool $browserReturn
+    ): array {
         if ($error !== '') {
             $message = $error === 'access_denied'
                 ? 'Sign-in was cancelled.'
@@ -284,6 +294,28 @@ class AdminConnectService
             ];
         }
 
+        $login = $this->logins->peek($state, time());
+        if ($login === null) {
+            return [
+                'ok' => false,
+                'message' => 'This sign-in link is invalid or was already used. Click Connect again.',
+            ];
+        }
+        if (!CallbackGuard::hostMatches($login->redirectUri, $requestHost)) {
+            $this->logins->consume($state, time());
+            $host = parse_url($login->redirectUri, PHP_URL_HOST);
+            $message = 'This sign-in returned to the wrong shop. Connect again so it can return to '
+                . (is_string($host) && $host !== '' ? $host : 'this store view') . '.';
+            $this->record($login, false, $message);
+            $this->flushConfig();
+            return ['ok' => false, 'message' => $message];
+        }
+        if (!$browserReturn) {
+            return [
+                'ok' => false,
+                'message' => 'Kiyoh-Connect did not return the browser to this shop. Close this window and click Connect again.',
+            ];
+        }
         $login = $this->logins->consume($state, time());
         if ($login === null) {
             return [
@@ -385,6 +417,9 @@ class AdminConnectService
         $this->configWriter->delete(ConnectConfig::ACCESS, $target['type'], $target['id']);
         $this->configWriter->delete(ConnectConfig::ACCESS_EXPIRES, $target['type'], $target['id']);
         $this->configWriter->delete(ConnectConfig::LAST_ATTEMPT, $target['type'], $target['id']);
+        $this->configWriter->delete(ConnectConfig::LAST_OK, $target['type'], $target['id']);
+        $this->configWriter->delete(ConnectConfig::LAST_MESSAGE, $target['type'], $target['id']);
+        $this->configWriter->delete(ConnectConfig::LAST_AT, $target['type'], $target['id']);
         $this->configWriter->delete(ConnectConfig::LOCATION_NAME, $target['type'], $target['id']);
         if ($dropShopCredential) {
             $this->deleteShopCredential($target);
@@ -560,9 +595,9 @@ class AdminConnectService
     }
 
     /**
-     * Register once per return address. A matching stored credential is reused
-     * so the one-time value is not requested again. The credential is written
-     * on the current scope before the popup opens.
+     * Register once per scope, issuer, and return address. A credential stored
+     * on another scope is not reused. The credential is written on the current
+     * scope before the popup opens.
      *
      * @param array{type:string,id:int} $target
      * @return string|null Admin error, or null when a credential is stored.
@@ -574,21 +609,17 @@ class AdminConnectService
             return null;
         }
 
-        $existing = $this->findShopCredential($issuer, $shop->redirectUri);
-        if ($existing === null) {
-            $registered = $this->client->registerShop($issuer, $shop);
-            if (!$registered->ok || $registered->shopCredential === null) {
-                $this->logCall('register', $registered);
-                if ($this->readShopCredential($target) !== null) {
-                    return 'The return address or server changed, and Kiyoh-Connect did not issue a new one-time shop credential. Disconnect, then connect again.';
-                }
-
-                return $registered->message;
+        $registered = $this->client->registerShop($issuer, $shop);
+        if (!$registered->ok || $registered->shopCredential === null) {
+            $this->logCall('register', $registered);
+            if ($this->readShopCredential($target) !== null) {
+                return 'The return address or server changed, and Kiyoh-Connect did not issue a new one-time shop credential. Disconnect, then connect again.';
             }
-            $existing = $registered->shopCredential;
+
+            return $registered->message;
         }
 
-        $this->saveShopCredential($target, $existing, $issuer, $shop->redirectUri);
+        $this->saveShopCredential($target, $registered->shopCredential, $issuer, $shop->redirectUri);
         $this->flushConfig();
 
         return null;
@@ -611,18 +642,6 @@ class AdminConnectService
         }
 
         return $stored;
-    }
-
-    private function findShopCredential(string $issuer, string $redirectUri): ?ShopCredential
-    {
-        foreach ($this->credentialScopes() as $scope) {
-            $stored = $this->usableShopCredential($scope, $issuer, $redirectUri);
-            if ($stored !== null) {
-                return $stored;
-            }
-        }
-
-        return null;
     }
 
     /**
@@ -835,7 +854,7 @@ class AdminConnectService
                     'id' => (int) $store->getId(),
                     'websiteCode' => '',
                     'storeCode' => (string) $store->getCode(),
-                    'baseUrl' => (string) $store->getBaseUrl(UrlInterface::URL_TYPE_LINK, true),
+                    'baseUrl' => $this->baseUrlFor('stores', (int) $store->getId(), (int) $store->getWebsiteId(), $store),
                     'label' => (string) $store->getName(),
                 ];
             }
@@ -854,7 +873,7 @@ class AdminConnectService
                     'id' => (int) $website->getId(),
                     'websiteCode' => (string) $website->getCode(),
                     'storeCode' => '',
-                    'baseUrl' => (string) $store->getBaseUrl(UrlInterface::URL_TYPE_LINK, true),
+                    'baseUrl' => $this->baseUrlFor('websites', (int) $website->getId(), null, $store),
                     'label' => (string) $website->getName(),
                 ];
             }
@@ -868,13 +887,66 @@ class AdminConnectService
                 'id' => 0,
                 'websiteCode' => '',
                 'storeCode' => '',
-                'baseUrl' => (string) $store->getBaseUrl(UrlInterface::URL_TYPE_LINK, true),
+                'baseUrl' => $this->baseUrlFor(ScopeConfigInterface::SCOPE_TYPE_DEFAULT, 0, null, $store),
                 'label' => 'Default config',
             ];
         } catch (\Throwable $e) {
             $this->logger->error('Kiyoh Connect: scope lookup failed', ['exception' => $e->getMessage()]);
             return ['error' => 'That store view does not exist.', 'type' => 'default', 'id' => 0, 'websiteCode' => '', 'storeCode' => '', 'baseUrl' => '', 'label' => ''];
         }
+    }
+
+    /**
+     * Store-view base URLs live in core_config_data. Store::getBaseUrl() can
+     * repeat the first store's host when called from the admin.
+     *
+     * @param mixed $store
+     */
+    private function baseUrlFor(string $scopeType, int $scopeId, ?int $websiteId, $store): string
+    {
+        $configured = $this->configuredBaseUrl($scopeType, $scopeId, $websiteId);
+        if ($configured !== null) {
+            return $configured;
+        }
+
+        return (string) $store->getBaseUrl(UrlInterface::URL_TYPE_LINK, true);
+    }
+
+    private function configuredBaseUrl(string $scopeType, int $scopeId, ?int $websiteId): ?string
+    {
+        try {
+            $connection = $this->resource->getConnection();
+            $select = $connection->select()
+                ->from($this->resource->getTableName('core_config_data'), ['scope', 'scope_id', 'path', 'value'])
+                ->where('path IN (?)', ['web/secure/base_url', 'web/unsecure/base_url']);
+            $rows = $connection->fetchAll($select);
+        } catch (\Throwable $e) {
+            $this->logger->error('Kiyoh Connect: could not read the store base URL');
+            return null;
+        }
+        if (!is_array($rows)) {
+            return null;
+        }
+        $secure = [];
+        $unsecure = [];
+        foreach ($rows as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $item = [
+                'scope' => (string) ($row['scope'] ?? ''),
+                'scope_id' => (int) ($row['scope_id'] ?? 0),
+                'value' => (string) ($row['value'] ?? ''),
+            ];
+            if (($row['path'] ?? '') === 'web/secure/base_url') {
+                $secure[] = $item;
+            } else {
+                $unsecure[] = $item;
+            }
+        }
+
+        return ScopeBaseUrl::resolve($secure, $scopeType, $scopeId, $websiteId)
+            ?? ScopeBaseUrl::resolve($unsecure, $scopeType, $scopeId, $websiteId);
     }
 
     /**
