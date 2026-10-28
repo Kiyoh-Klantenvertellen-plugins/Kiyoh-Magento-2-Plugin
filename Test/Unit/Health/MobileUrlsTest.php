@@ -7,12 +7,17 @@ use PHPUnit\Framework\TestCase;
 
 class MobileUrlsTest extends TestCase
 {
-    public function testBlankValueUsesTheDefaultUrl(): void
+    public function testBlankValueUsesBothDefaultHosts(): void
     {
-        $this->assertSame(['https://kiyoh-mobile.com'], MobileUrls::parse(null));
-        $this->assertSame(['https://kiyoh-mobile.com'], MobileUrls::parse(''));
-        $this->assertSame(['https://kiyoh-mobile.com'], MobileUrls::parse('   '));
-        $this->assertSame(['https://kiyoh-mobile.com'], MobileUrls::parse(','));
+        $expected = [
+            'https://kiyoh-mobile.com',
+            'https://kiyohmobileui-staging.up.railway.app',
+        ];
+        $this->assertSame($expected, MobileUrls::parse(MobileUrls::DEFAULT_URLS));
+        $this->assertSame($expected, MobileUrls::parse(null));
+        $this->assertSame($expected, MobileUrls::parse(''));
+        $this->assertSame($expected, MobileUrls::parse('   '));
+        $this->assertSame($expected, MobileUrls::parse(','));
     }
 
     public function testCommaSeparatedUrlsAreTrimmedDedupedAndStripped(): void
@@ -48,7 +53,13 @@ class MobileUrlsTest extends TestCase
 
     public function testInvalidSegmentsFallBackWhenNothingRemains(): void
     {
-        $this->assertSame(['https://kiyoh-mobile.com'], MobileUrls::parse('ftp://files.example, ://bad'));
+        $this->assertSame(
+            [
+                'https://kiyoh-mobile.com',
+                'https://kiyohmobileui-staging.up.railway.app',
+            ],
+            MobileUrls::parse('ftp://files.example, ://bad')
+        );
         $this->assertSame(
             ['https://shop.example'],
             MobileUrls::parse('ftp://files.example, https://shop.example')

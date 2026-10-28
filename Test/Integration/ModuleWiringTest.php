@@ -2,6 +2,7 @@
 
 namespace Kiyoh\Reviews\Test\Integration;
 
+use Kiyoh\Reviews\Model\Health\MobileUrls;
 use Kiyoh\Reviews\Model\ModuleMeta;
 use PHPUnit\Framework\TestCase;
 
@@ -12,19 +13,40 @@ class ModuleWiringTest extends TestCase
         $xml = simplexml_load_file(KIYOH_MODULE_ROOT . '/etc/module.xml');
         $this->assertNotFalse($xml);
         $this->assertSame(ModuleMeta::VERSION, (string) $xml->module['setup_version']);
-        $this->assertSame('1.5.0', ModuleMeta::VERSION);
+        $this->assertSame('1.5.1', ModuleMeta::VERSION);
     }
 
-    public function testMobileUrlConfigDefaultsToKiyohMobile(): void
+    public function testMobileUrlConfigDefaultsToProductionAndStaging(): void
     {
         $config = file_get_contents(KIYOH_MODULE_ROOT . '/etc/config.xml');
         $system = file_get_contents(KIYOH_MODULE_ROOT . '/etc/adminhtml/system.xml');
 
         $this->assertIsString($config);
         $this->assertIsString($system);
-        $this->assertStringContainsString('<mobile_urls>https://kiyoh-mobile.com</mobile_urls>', $config);
+        $this->assertStringContainsString(
+            '<mobile_urls>' . MobileUrls::DEFAULT_URLS . '</mobile_urls>',
+            $config
+        );
+        $this->assertSame(
+            [
+                'https://kiyoh-mobile.com',
+                'https://kiyohmobileui-staging.up.railway.app',
+            ],
+            MobileUrls::parse(MobileUrls::DEFAULT_URLS)
+        );
         $this->assertStringContainsString('<label>Kiyoh Mobile URL(s)</label>', $system);
-        $this->assertStringContainsString('https://kiyohmobileui-staging.up.railway.app', $system);
+        $this->assertStringContainsString(
+            'Default: https://kiyoh-mobile.com, https://kiyohmobileui-staging.up.railway.app.',
+            $system
+        );
+
+        $patch = file_get_contents(
+            KIYOH_MODULE_ROOT . '/Setup/Patch/Data/SendHealthToProductionAndStaging.php'
+        );
+        $this->assertIsString($patch);
+        $this->assertStringContainsString('https://kiyoh-mobile.com', $patch);
+        $this->assertStringContainsString('MobileUrls::DEFAULT_URLS', $patch);
+        $this->assertStringContainsString('kiyoh_reviews/api_settings/mobile_urls', $patch);
     }
 
     public function testDailyHealthCronIsRegistered(): void

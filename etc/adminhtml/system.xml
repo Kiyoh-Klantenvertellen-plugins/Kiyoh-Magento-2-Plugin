@@ -50,7 +50,7 @@
                 </field>
                 <field id="mobile_urls" translate="label comment" type="text" sortOrder="50" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Kiyoh Mobile URL(s)</label>
-                    <comment>Comma-separated Kiyoh Mobile base URLs. Health is reported to each URL for this store view. Default: https://kiyoh-mobile.com. Add https://kiyohmobileui-staging.up.railway.app to report to staging as well.</comment>
+                    <comment>Comma-separated Kiyoh Mobile base URLs. Health is reported to each URL for this store view. A failure on one host is logged for that host and does not stop the others. Default: https://kiyoh-mobile.com, https://kiyohmobileui-staging.up.railway.app.</comment>
                 </field>
             </group>
             

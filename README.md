@@ -71,7 +71,7 @@ composer config repositories.kiyoh-reviews vcs https://github.com/Kiyoh-Klantenv
 composer require kiyoh/reviews:1.3.0
 ```
 
-Use `dev-cursor/kiyoh-mobile-health-31a0` instead of `1.3.0` to install this branch (module version 1.5.0) before it is tagged.
+Use `1.5.1` instead of `1.3.0` to install this release from Git before Packagist indexes the tag.
 
 Once installed, you'll see a new "Kiyoh" section in your Magento admin panel under **Stores > Configuration**.
 
@@ -92,7 +92,7 @@ In the **API Settings** section:
 - **Server**: Select your platform (e.g., klantenvertellen.nl)
 - **Location ID**: Enter your Location ID
 - **API Token**: Enter your API Token
-- **Kiyoh Mobile URL(s)**: Leave the default `https://kiyoh-mobile.com`, or enter a comma-separated list when this store view should also report to another Kiyoh Mobile host (for example `https://kiyohmobileui-staging.up.railway.app`)
+- **Kiyoh Mobile URL(s)**: Leave the default `https://kiyoh-mobile.com, https://kiyohmobileui-staging.up.railway.app`, or replace it with your own comma-separated list. Health is reported to each URL. A failure on one host does not stop the others.
 - Click **Save Config**
 
 #### Connect with Kiyoh / Klantenvertellen
@@ -184,7 +184,7 @@ Invitations always use the order’s `store_id` to pick credentials, so eurobedd
 
 ### Kiyoh Mobile health
 
-Each store view that has a Location ID and API token reports its own shop to Kiyoh Mobile. The shop id is the store's secure base host. A store view other than the default view also includes its store code, so two views on one domain stay separate.
+Each store view that has a Location ID and API token reports its own shop to Kiyoh Mobile. By default that report is sent to both `https://kiyoh-mobile.com` and `https://kiyohmobileui-staging.up.railway.app`. Each host is contacted separately, and a failure is logged for that host only. The shop id is the store's secure base host. A store view other than the default view also includes its store code, so two views on one domain stay separate.
 
 Health is sent when you save the Kiyoh configuration, when an invitation is sent or fails, when products are synced, and once a day by cron (`kiyoh_reviews_mobile_health`). The same payload is sent again after 24 hours. Each call uses a short timeout. A slow or unavailable health endpoint leaves orders and invitations running.
 
@@ -292,7 +292,7 @@ The refresh token is kept until Disconnect, until a manual token replaces it, or
 **Compatibility**: Magento 2.4.6+ and PHP 8.2+  
 **Developer**: Kiyoh  
 **License**: Proprietary  
-**Module version on this branch**: 1.5.0  
+**Module version on this branch**: 1.5.1  
 **Newest Git tag**: v1.3.0 (PHP 8.4 nullable-parameter fix). Packagist may still resolve v1.2.0 until a maintainer updates the package.  
 **Last Updated**: October 2026
 

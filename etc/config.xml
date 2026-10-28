@@ -7,7 +7,7 @@
                 <server>kiyoh.com</server>
                 <location_id></location_id>
                 <api_token></api_token>
-                <mobile_urls>https://kiyoh-mobile.com</mobile_urls>
+                <mobile_urls>https://kiyoh-mobile.com,https://kiyohmobileui-staging.up.railway.app</mobile_urls>
             </api_settings>
             <review_invitations>
                 <enabled>0</enabled>
