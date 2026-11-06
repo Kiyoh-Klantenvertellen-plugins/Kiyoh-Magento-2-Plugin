@@ -111,10 +111,12 @@ class ModuleWiringTest extends TestCase
         $this->assertIsString($command);
         $this->assertStringNotContainsString('CURLOPT_SSL_VERIFYPEER, false', $api); // preflight: ignore — asserts TLS is not disabled
         $this->assertStringNotContainsString('CURLOPT_SSL_VERIFYPEER, false', $transport); // preflight: ignore — asserts TLS is not disabled
-        $this->assertSame(8, substr_count($api, 'applyTlsVerification('));
+        $this->assertSame(9, substr_count($api, 'applyTlsVerification('));
         $this->assertStringContainsString('CURLOPT_SSL_VERIFYHOST => 2', $transport);
         $this->assertStringNotContainsString('ObjectManager::getInstance()', $command); // preflight: ignore — asserts the command does not use it
         $this->assertStringContainsString('OrderInterfaceFactory $orderFactory', $command);
+        $this->assertStringContainsString('PublicationServerHost', $api);
+        $this->assertStringContainsString('PublicationStatisticsValidator', $api);
     }
 
     public function testConnectContractIsWired(): void

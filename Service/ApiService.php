@@ -5,6 +5,8 @@ namespace Kiyoh\Reviews\Service;
 use Kiyoh\Reviews\Api\ApiServiceInterface;
 use Kiyoh\Reviews\Helper\ProductCode;
 use Kiyoh\Reviews\Model\Health\HealthReporter;
+use Kiyoh\Reviews\Model\Publication\PublicationServerHost;
+use Kiyoh\Reviews\Model\Publication\PublicationStatisticsValidator;
 use Magento\Catalog\Model\Product\Attribute\Source\Status;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\Encryption\EncryptorInterface;
@@ -938,13 +940,18 @@ class ApiService implements ApiServiceInterface
     private function getServerUrl(int $storeId): string
     {
         $server = $this->getConfig(self::CONFIG_PATH_SERVER, $storeId);
+        $mapped = PublicationServerHost::baseUrlForConfigServer(is_string($server) ? $server : null);
+        if ($mapped !== null) {
+            return $mapped;
+        }
+        if ($server === null || (is_string($server) && trim($server) === '')) {
+            return 'https://www.kiyoh.com';
+        }
+        $this->logger->warning('Kiyoh API: unknown server value in config, using kiyoh.com', [
+            'server' => $server,
+        ]);
 
-        $serverMap = [
-            'kiyoh.com' => 'https://www.kiyoh.com',
-            'klantenvertellen.nl' => 'https://www.klantenvertellen.nl'
-        ];
-
-        return $serverMap[$server] ?? 'https://www.kiyoh.com';
+        return 'https://www.kiyoh.com';
     }
 
     private function isEnabled(int $storeId): bool
@@ -1021,7 +1028,13 @@ class ApiService implements ApiServiceInterface
 
     public function validateNewApiCredentials(string $server, string $hash, string $locationId): array
     {
-        $serverUrl = $this->mapNewApiServer($server);
+        $serverUrl = PublicationServerHost::baseUrlForConfigServer($server);
+        if ($serverUrl === null) {
+            return [
+                'success' => false,
+                'message' => 'Choose Server kiyoh.com or klantenvertellen.nl, save if needed, and try again.',
+            ];
+        }
         $url = sprintf(
             '%s/v1/publication/review/external/location/statistics?locationId=%s',
             $serverUrl,
@@ -1071,10 +1084,78 @@ class ApiService implements ApiServiceInterface
                 return ['success' => false, 'message' => 'Location not found - check Location ID'];
             }
 
+            $issuerCheck = $this->validateStatisticsResponseIssuer($server, $serverUrl, $hash, $locationId, $data);
+            if ($issuerCheck !== null) {
+                return ['success' => false, 'message' => $issuerCheck];
+            }
+
             return ['success' => true, 'message' => 'Credentials validated successfully'];
         } catch (\Exception $e) {
             return ['success' => false, 'message' => $e->getMessage()];
         }
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private function validateStatisticsResponseIssuer(
+        string $configServer,
+        string $primaryBaseUrl,
+        string $hash,
+        string $locationId,
+        array $data
+    ): ?string {
+        $tenantMsg = PublicationStatisticsValidator::tenantMismatchMessage($configServer, $data);
+        if ($tenantMsg !== null) {
+            return $tenantMsg;
+        }
+        $tenantRaw = $data['tenantId'] ?? null;
+        if (is_numeric($tenantRaw)) {
+            return null;
+        }
+
+        $otherBase = $primaryBaseUrl === 'https://www.klantenvertellen.nl'
+            ? 'https://www.kiyoh.com'
+            : 'https://www.klantenvertellen.nl';
+        if ($this->statisticsSucceedsWithSameToken($otherBase, $hash, $locationId)) {
+            return 'These credentials work on ' . ($otherBase === 'https://www.kiyoh.com' ? 'kiyoh.com' : 'klantenvertellen.nl')
+                . ' but Server is set to ' . $configServer . '. Switch Server or use credentials for this platform.';
+        }
+
+        return null;
+    }
+
+    private function statisticsSucceedsWithSameToken(string $baseUrl, string $hash, string $locationId): bool
+    {
+        $url = sprintf(
+            '%s/v1/publication/review/external/location/statistics?locationId=%s',
+            $baseUrl,
+            urlencode($locationId)
+        );
+
+        try {
+            $ch = curl_init($url);
+            $this->applyTlsVerification($ch);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, self::TIMEOUT_REVIEWS);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'X-Publication-Api-Token: ' . $hash,
+            ]);
+            $response = curl_exec($ch);
+            $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+        } catch (\Exception $e) {
+            return false;
+        }
+
+        if ($response === false || $httpCode !== 200) {
+            return false;
+        }
+        $data = json_decode((string) $response, true);
+
+        return is_array($data)
+            && !isset($data['errorCode'])
+            && isset($data['locationName']);
     }
 
     private function mapLegacyServer(string $server): string
@@ -1085,17 +1166,6 @@ class ApiService implements ApiServiceInterface
         ];
 
         return $serverMap[$server] ?? 'https://www.kiyoh.nl';
-    }
-
-    private function mapNewApiServer(string $server): string
-    {
-        $serverMap = [
-            'klantenvertellen.nl' => 'https://www.klantenvertellen.nl',
-            'newkiyoh.com' => 'https://www.kiyoh.com',
-            'kiyoh.com' => 'https://www.kiyoh.com'
-        ];
-
-        return $serverMap[$server] ?? 'https://www.kiyoh.com';
     }
 
     /**
