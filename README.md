@@ -90,7 +90,7 @@ In the **API Settings** section:
 
 On the same API Settings group, **Connect with Kiyoh / Klantenvertellen** signs the merchant in through Kiyoh-Connect instead of pasting a token. Pick the Server (`kiyoh.com` uses `https://connect.kiyoh.com`, `klantenvertellen.nl` uses `https://connect.klantenvertellen.nl`), save if you changed it, then click Connect. A window opens for the Kiyoh or Klantenvertellen login. After the merchant picks a location, this shop's Location ID and API token are filled in for the current scope.
 
-**Test connection** checks the saved Location ID and API token with one statistics call and shows a short success or failure message.
+**Test connection** checks the saved Location ID and API token with one statistics call against the host for the selected Server (kiyoh.com or klantenvertellen.nl). It confirms the response matches that platform—for example using `tenantId` when the API returns it—and shows a clear failure if the credentials work on the other host instead.
 
 **Disconnect** revokes the Kiyoh-Connect session. If the credentials came from Connect, the Location ID and API token are cleared. A token that was pasted by hand is left in place.
 
@@ -279,12 +279,12 @@ The refresh token is kept until Disconnect, until a manual token replaces it, or
 
 ## About This Extension
 
-**Versioning**: Composer/Packagist releases follow Git tags. There is no `version` field in `composer.json`.  
+**Versioning**: `composer.json` `version`, `etc/module.xml` `setup_version`, and `Model/ModuleMeta::VERSION` are the same number. Packagist still publishes the Git tag.  
 **Compatibility**: Magento 2.4.6+ and PHP 8.2+  
 **Developer**: Kiyoh  
 **License**: Proprietary  
-**Module version on this branch**: 1.5.1  
-**Newest Git tag**: v1.5.1 (also served by Packagist).  
+**Module version on this branch**: 1.5.2  
+**Newest Git tag**: v1.5.1 (Packagist until v1.5.2 is tagged).  
 **Last Updated**: October 2026
 
 ---

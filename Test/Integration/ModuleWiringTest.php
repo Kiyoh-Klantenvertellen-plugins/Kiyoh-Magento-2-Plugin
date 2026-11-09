@@ -13,7 +13,10 @@ class ModuleWiringTest extends TestCase
         $xml = simplexml_load_file(KIYOH_MODULE_ROOT . '/etc/module.xml');
         $this->assertNotFalse($xml);
         $this->assertSame(ModuleMeta::VERSION, (string) $xml->module['setup_version']);
-        $this->assertSame('1.5.1', ModuleMeta::VERSION);
+        $composer = json_decode((string) file_get_contents(KIYOH_MODULE_ROOT . '/composer.json'), true);
+        $this->assertIsArray($composer);
+        $this->assertSame(ModuleMeta::VERSION, $composer['version'] ?? null);
+        $this->assertSame('1.5.2', ModuleMeta::VERSION);
     }
 
     public function testMobileUrlConfigDefaultsToProductionAndStaging(): void
@@ -108,10 +111,12 @@ class ModuleWiringTest extends TestCase
         $this->assertIsString($command);
         $this->assertStringNotContainsString('CURLOPT_SSL_VERIFYPEER, false', $api); // preflight: ignore — asserts TLS is not disabled
         $this->assertStringNotContainsString('CURLOPT_SSL_VERIFYPEER, false', $transport); // preflight: ignore — asserts TLS is not disabled
-        $this->assertSame(8, substr_count($api, 'applyTlsVerification('));
+        $this->assertSame(9, substr_count($api, 'applyTlsVerification('));
         $this->assertStringContainsString('CURLOPT_SSL_VERIFYHOST => 2', $transport);
         $this->assertStringNotContainsString('ObjectManager::getInstance()', $command); // preflight: ignore — asserts the command does not use it
         $this->assertStringContainsString('OrderInterfaceFactory $orderFactory', $command);
+        $this->assertStringContainsString('PublicationServerHost', $api);
+        $this->assertStringContainsString('PublicationStatisticsValidator', $api);
     }
 
     public function testConnectContractIsWired(): void

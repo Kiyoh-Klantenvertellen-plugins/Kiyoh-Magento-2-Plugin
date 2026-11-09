@@ -3,6 +3,7 @@
 namespace Kiyoh\Reviews\Controller\OAuth;
 
 use Kiyoh\Reviews\Model\Connect\AdminConnectService;
+use Kiyoh\Reviews\Model\Connect\CallbackGuard;
 use Kiyoh\Reviews\Model\Connect\CallbackPage;
 use Magento\Framework\App\Action\Action;
 use Magento\Framework\App\Action\Context;
@@ -47,10 +48,26 @@ class Callback extends Action implements HttpGetActionInterface
     {
         $request = $this->getRequest();
         try {
+            $host = '';
+            $browserReturn = false;
+            if (method_exists($request, 'getServer')) {
+                $purpose = (string) $request->getServer('HTTP_SEC_PURPOSE');
+                if ($purpose === '') {
+                    $purpose = (string) $request->getServer('HTTP_PURPOSE');
+                }
+                $host = (string) $request->getServer('HTTP_HOST');
+                $browserReturn = CallbackGuard::isBrowserReturn(
+                    (string) $request->getServer('HTTP_SEC_FETCH_DEST'),
+                    (string) $request->getServer('HTTP_SEC_FETCH_MODE'),
+                    $purpose
+                );
+            }
             $result = $this->connect->completeCallback(
                 (string) $request->getParam('code', ''),
                 (string) $request->getParam('state', ''),
-                (string) $request->getParam('error', '')
+                (string) $request->getParam('error', ''),
+                $host,
+                $browserReturn
             );
         } catch (\Throwable $e) {
             $this->logger->error('Kiyoh Connect: callback exception', ['exception' => $e->getMessage()]);

@@ -327,7 +327,10 @@ class ConnectContractTest extends TestCase
             1700000900
         );
         $ledger->put($login);
+        $this->assertNotNull($ledger->peek($login->state, 1700000000));
+        $this->assertNotNull($ledger->peek($login->state, 1700000000));
         $this->assertNotNull($ledger->consume($login->state, 1700000000));
+        $this->assertNull($ledger->peek($login->state, 1700000000));
         $this->assertNull($ledger->consume($login->state, 1700000000));
 
         $ledger->put($login);

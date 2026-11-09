@@ -50,6 +50,18 @@ class ConnectLoginRepository implements PendingLoginStore
         );
     }
 
+    public function peek(string $state, int $now): ?PendingLogin
+    {
+        $payload = $this->resource->getConnection()->fetchOne(
+            $this->resource->getConnection()->select()
+                ->from($this->table(), ['payload'])
+                ->where('state = ?', $state)
+                ->limit(1)
+        );
+
+        return $this->decode(is_string($payload) ? $payload : '', $state, $now);
+    }
+
     public function consume(string $state, int $now): ?PendingLogin
     {
         $connection = $this->resource->getConnection();
@@ -73,7 +85,13 @@ class ConnectLoginRepository implements PendingLoginStore
         }
 
         $payload = $row['payload'] ?? null;
-        if (!is_string($payload) || $payload === '') {
+
+        return $this->decode(is_string($payload) ? $payload : '', $state, $now);
+    }
+
+    private function decode(string $payload, string $state, int $now): ?PendingLogin
+    {
+        if ($payload === '') {
             return null;
         }
         try {
