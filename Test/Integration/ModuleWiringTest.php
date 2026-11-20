@@ -13,10 +13,10 @@ class ModuleWiringTest extends TestCase
         $xml = simplexml_load_file(KIYOH_MODULE_ROOT . '/etc/module.xml');
         $this->assertNotFalse($xml);
         $this->assertSame(ModuleMeta::VERSION, (string) $xml->module['setup_version']);
-        $this->assertSame('1.5.1', ModuleMeta::VERSION);
+        $this->assertSame('1.5.2', ModuleMeta::VERSION);
     }
 
-    public function testMobileUrlConfigDefaultsToProductionAndStaging(): void
+    public function testMobileUrlConfigDefaultsToProductionOnlyAndIsHiddenFromAdmin(): void
     {
         $config = file_get_contents(KIYOH_MODULE_ROOT . '/etc/config.xml');
         $system = file_get_contents(KIYOH_MODULE_ROOT . '/etc/adminhtml/system.xml');
@@ -28,24 +28,18 @@ class ModuleWiringTest extends TestCase
             $config
         );
         $this->assertSame(
-            [
-                'https://kiyoh-mobile.com',
-                'https://kiyohmobileui-staging.up.railway.app',
-            ],
+            ['https://kiyoh-mobile.com'],
             MobileUrls::parse(MobileUrls::DEFAULT_URLS)
         );
-        $this->assertStringContainsString('<label>Kiyoh Mobile URL(s)</label>', $system);
-        $this->assertStringContainsString(
-            'Default: https://kiyoh-mobile.com, https://kiyohmobileui-staging.up.railway.app.',
-            $system
-        );
+        $this->assertStringNotContainsString('<field id="mobile_urls"', $system);
+        $this->assertStringNotContainsString('<label>Kiyoh Mobile URL(s)</label>', $system);
 
         $patch = file_get_contents(
-            KIYOH_MODULE_ROOT . '/Setup/Patch/Data/SendHealthToProductionAndStaging.php'
+            KIYOH_MODULE_ROOT . '/Setup/Patch/Data/RemoveStagingFromMobileUrls.php'
         );
         $this->assertIsString($patch);
-        $this->assertStringContainsString('https://kiyoh-mobile.com', $patch);
-        $this->assertStringContainsString('MobileUrls::DEFAULT_URLS', $patch);
+        $this->assertStringContainsString('MobileUrls::STAGING_HOST', $patch);
+        $this->assertStringContainsString('stripStagingFromStored', $patch);
         $this->assertStringContainsString('kiyoh_reviews/api_settings/mobile_urls', $patch);
     }
 

@@ -3,14 +3,20 @@
 namespace Kiyoh\Reviews\Model\Health;
 
 /**
- * Parses the comma-separated "Kiyoh Mobile URL(s)" config value.
+ * Parses the comma-separated kiyoh_reviews/api_settings/mobile_urls config value.
+ * Not exposed in admin; merchants use the production default unless testers override via CLI/env.
  */
 final class MobileUrls
 {
     /**
      * Comma-separated default. Keep this identical to etc/config.xml mobile_urls.
      */
-    public const DEFAULT_URLS = 'https://kiyoh-mobile.com,https://kiyohmobileui-staging.up.railway.app';
+    public const DEFAULT_URLS = 'https://kiyoh-mobile.com';
+
+    /**
+     * Staging host removed from defaults and from stored config on upgrade (KP-173).
+     */
+    public const STAGING_HOST = 'kiyohmobileui-staging.up.railway.app';
 
     /**
      * @return list<string>
@@ -23,6 +29,31 @@ final class MobileUrls
         }
 
         return $urls;
+    }
+
+    /**
+     * When a saved value still references staging, return the cleaned comma-separated list;
+     * otherwise null (leave the row unchanged).
+     */
+    public static function stripStagingFromStored(?string $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+        if (stripos($value, self::STAGING_HOST) === false) {
+            return null;
+        }
+
+        $urls = array_values(array_filter(
+            self::collect($value),
+            static fn (string $url): bool => stripos($url, self::STAGING_HOST) === false
+        ));
+
+        if ($urls === []) {
+            return self::DEFAULT_URLS;
+        }
+
+        return implode(',', $urls);
     }
 
     /**

@@ -83,7 +83,6 @@ In the **API Settings** section:
 - **Server**: Select your platform (e.g., klantenvertellen.nl)
 - **Location ID**: Enter your Location ID
 - **API Token**: Enter your API Token
-- **Kiyoh Mobile URL(s)**: Leave the default `https://kiyoh-mobile.com, https://kiyohmobileui-staging.up.railway.app`, or replace it with your own comma-separated list. Health is reported to each URL. A failure on one host does not stop the others.
 - Click **Save Config**
 
 #### Connect with Kiyoh / Klantenvertellen
@@ -100,7 +99,7 @@ No shared HMAC key or client secret is configured on the shop. The module regist
 
 The browser returns to `https://{shop-host}/kiyoh/oauth/callback` (the shop host, not the Magento admin path and not a store-code prefix). The vhost must route that path to Magento. `Add Store Code to Urls` is not part of that return address.
 
-The system will automatically verify your credentials when you save. Saving also sends this store view's integration health to each Kiyoh Mobile URL.
+The system will automatically verify your credentials when you save. Saving also sends this store view's integration health to Kiyoh Mobile (`https://kiyoh-mobile.com` by default).
 
 #### Configure Review Invitations
 
@@ -175,11 +174,24 @@ Invitations always use the order’s `store_id` to pick credentials, so eurobedd
 
 ### Kiyoh Mobile health
 
-Each store view that has a Location ID and API token reports its own shop to Kiyoh Mobile. By default that report is sent to both `https://kiyoh-mobile.com` and `https://kiyohmobileui-staging.up.railway.app`. Each host is contacted separately, and a failure is logged for that host only. The shop id is the store's secure base host. A store view other than the default view also includes its store code, so two views on one domain stay separate.
+Each store view that has a Location ID and API token reports its own shop to Kiyoh Mobile. By default that report is sent to `https://kiyoh-mobile.com`. The shop id is the store's secure base host. A store view other than the default view also includes its store code, so two views on one domain stay separate.
 
 Health is sent when you save the Kiyoh configuration, when an invitation is sent or fails, when products are synced, and once a day by cron (`kiyoh_reviews_mobile_health`). The same payload is sent again after 24 hours. Each call uses a short timeout. A slow or unavailable health endpoint leaves orders and invitations running.
 
 The report includes connection status, invitation results from the last 24 hours, and up to 500 synced product codes. This module records no incoming webhooks and does not inject a review widget, and the health payload says so.
+
+#### Kiyoh Mobile URL override (developers / testers)
+
+Merchants do not configure the health endpoint in admin. The config path `kiyoh_reviews/api_settings/mobile_urls` accepts a comma-separated list of base URLs (scheme + host, optional path). When unset, health is reported only to `https://kiyoh-mobile.com`.
+
+To point a store view at a non-production host (for example staging), set the path without exposing it in the configuration UI:
+
+```bash
+bin/magento config:set --scope=stores --scope-code=<store_code> \
+  kiyoh_reviews/api_settings/mobile_urls "https://<your-mobile-host>"
+```
+
+You can also override the same path in `app/etc/env.php` under `system` → `stores` / `websites` / `default` as usual for Magento. Remove or clear the value to fall back to the production default. After upgrading from 1.5.1, `bin/magento setup:upgrade` strips the former tester staging host from any saved value that still contains it.
 
 ### Product codes (SKU rules)
 
@@ -283,9 +295,9 @@ The refresh token is kept until Disconnect, until a manual token replaces it, or
 **Compatibility**: Magento 2.4.6+ and PHP 8.2+  
 **Developer**: Kiyoh  
 **License**: Proprietary  
-**Module version on this branch**: 1.5.1  
-**Newest Git tag**: v1.5.1 (also served by Packagist).  
-**Last Updated**: October 2026
+**Module version on this branch**: 1.5.2  
+**Newest Git tag**: v1.5.1 (also served by Packagist until v1.5.2 is tagged).  
+**Last Updated**: November 2026
 
 ---
 
