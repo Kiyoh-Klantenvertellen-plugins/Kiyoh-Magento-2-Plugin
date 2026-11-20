@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.5.2 - 2026-11-20
+
+### Changed
+
+- **Kiyoh Mobile URL(s)** is no longer shown in admin. Live shops report integration health only to `https://kiyoh-mobile.com` unless a value is set through hidden configuration (`bin/magento config:set` or `env.php`). On `setup:upgrade`, saved values that still reference the tester staging host have that host removed; other custom lists are unchanged. (Jira KP-173)
+
 ## 1.5.1 - 2026-10-28
 
 ### Changed

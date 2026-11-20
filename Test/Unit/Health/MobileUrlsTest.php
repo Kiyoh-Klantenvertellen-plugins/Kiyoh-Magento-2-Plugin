@@ -7,12 +7,9 @@ use PHPUnit\Framework\TestCase;
 
 class MobileUrlsTest extends TestCase
 {
-    public function testBlankValueUsesBothDefaultHosts(): void
+    public function testBlankValueUsesProductionDefault(): void
     {
-        $expected = [
-            'https://kiyoh-mobile.com',
-            'https://kiyohmobileui-staging.up.railway.app',
-        ];
+        $expected = ['https://kiyoh-mobile.com'];
         $this->assertSame($expected, MobileUrls::parse(MobileUrls::DEFAULT_URLS));
         $this->assertSame($expected, MobileUrls::parse(null));
         $this->assertSame($expected, MobileUrls::parse(''));
@@ -23,13 +20,13 @@ class MobileUrlsTest extends TestCase
     public function testCommaSeparatedUrlsAreTrimmedDedupedAndStripped(): void
     {
         $urls = MobileUrls::parse(
-            ' https://kiyoh-mobile.com/, https://kiyohmobileui-staging.up.railway.app, https://kiyoh-mobile.com '
+            ' https://kiyoh-mobile.com/, https://custom.example, https://kiyoh-mobile.com '
         );
 
         $this->assertSame(
             [
                 'https://kiyoh-mobile.com',
-                'https://kiyohmobileui-staging.up.railway.app',
+                'https://custom.example',
             ],
             $urls
         );
@@ -54,15 +51,32 @@ class MobileUrlsTest extends TestCase
     public function testInvalidSegmentsFallBackWhenNothingRemains(): void
     {
         $this->assertSame(
-            [
-                'https://kiyoh-mobile.com',
-                'https://kiyohmobileui-staging.up.railway.app',
-            ],
+            ['https://kiyoh-mobile.com'],
             MobileUrls::parse('ftp://files.example, ://bad')
         );
         $this->assertSame(
             ['https://shop.example'],
             MobileUrls::parse('ftp://files.example, https://shop.example')
+        );
+    }
+
+    public function testStripStagingFromStoredRemovesStagingHostOnly(): void
+    {
+        $both = 'https://kiyoh-mobile.com,https://kiyohmobileui-staging.up.railway.app';
+        $this->assertSame('https://kiyoh-mobile.com', MobileUrls::stripStagingFromStored($both));
+
+        $custom = 'https://shop.example,https://kiyohmobileui-staging.up.railway.app';
+        $this->assertSame('https://shop.example', MobileUrls::stripStagingFromStored($custom));
+
+        $this->assertNull(MobileUrls::stripStagingFromStored('https://kiyoh-mobile.com'));
+        $this->assertNull(MobileUrls::stripStagingFromStored(null));
+    }
+
+    public function testStripStagingFromStoredFallsBackToProductionWhenOnlyStaging(): void
+    {
+        $this->assertSame(
+            MobileUrls::DEFAULT_URLS,
+            MobileUrls::stripStagingFromStored('https://kiyohmobileui-staging.up.railway.app')
         );
     }
 }
