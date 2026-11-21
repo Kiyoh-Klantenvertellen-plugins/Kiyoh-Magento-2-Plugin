@@ -9,6 +9,24 @@
             "PRIMARY": true
         }
     },
+    "kiyoh_reviews_order_invite": {
+        "column": {
+            "order_id": true,
+            "store_id": true,
+            "invite_status": true,
+            "attempt_count": true,
+            "last_error": true,
+            "next_retry_at": true,
+            "created_at": true,
+            "updated_at": true
+        },
+        "index": {
+            "KIYOH_REVIEWS_ORDER_INVITE_RETRY": true
+        },
+        "constraint": {
+            "PRIMARY": true
+        }
+    },
     "kiyoh_reviews_connect_login": {
         "column": {
             "state": true,

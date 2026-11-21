@@ -128,6 +128,23 @@
                 </field>
             </group>
             
+            <group id="product_structured_data" translate="label" type="text" sortOrder="35" showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>Product Structured Data (SEO)</label>
+                <field id="enabled" translate="label" type="select" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Product aggregateRating JSON-LD</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>When enabled, product pages can output schema.org Product JSON-LD with Kiyoh aggregateRating (default off). Ratings are fetched server-side and cached for 12 hours.</comment>
+                </field>
+                <field id="output_mode" translate="label" type="select" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Output mode</label>
+                    <source_model>Kiyoh\Reviews\Model\Config\Source\StructuredDataOutput</source_model>
+                    <comment>Use standalone output unless your theme or SEO extension already emits Product JSON-LD (duplicate markup can confuse search engines).</comment>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+            </group>
+            
             <group id="product_sync" translate="label" type="text" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1">
                 <label>Product Synchronization</label>
                 <field id="enabled" translate="label" type="select" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">

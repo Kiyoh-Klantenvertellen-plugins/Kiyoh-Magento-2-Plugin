@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.5.3 - 2026-11-21
+
+### Added
+
+- Per-order invitation ledger (`kiyoh_reviews_order_invite`) so each order gets at most one invite when it first enters the configured trigger status. Failed API sends are recorded and retried by cron `kiyoh_reviews_retry_failed_invitations` (up to three attempts with backoff).
+- Optional product-page schema.org `Product` JSON-LD with Kiyoh `aggregateRating` (admin toggle per store view, default off; standalone output mode). Ratings are loaded server-side and cached for 12 hours via `GET /v1/publication/product/review/external`.
+- Data patch on `setup:upgrade` marks existing orders already in a trigger status as invited, so upgrades do not send duplicate invites on the next order save.
+
+### Security
+
+- Order observer logs mask customer email addresses.
+
 ## 1.5.1 - 2026-10-28
 
 ### Changed

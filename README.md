@@ -190,7 +190,11 @@ The report includes connection status, invitation results from the last 24 hours
 
 ### Storefront / Hyvä display
 
-This module focuses on invitations and product catalog sync. Shop badges and product-page review UI are **out of scope** here — use a Kiyoh embed/widget or your theme (including Hyvä) to display reviews. Match reviews on the same SKU + location as configured above.
+This module focuses on invitations and product catalog sync. Shop badges and on-page review widgets remain optional (Kiyoh embed or your theme, including Hyvä).
+
+**Product SEO (1.5.3):** Under **Kiyoh → Reviews Configuration → Product Structured Data (SEO)** you can enable schema.org `aggregateRating` JSON-LD on product pages (default **off**). Use standalone output unless your theme or SEO extension already prints Product JSON-LD. Ratings use the same product SKU + location as invitations and are cached for 12 hours.
+
+**Invitations (1.5.3):** Only the first time an order **enters** your trigger status (for example `complete`) sends an invite; later saves on the same order do not. Failed sends are retried automatically (up to three attempts). Customer emails are not written in plain text to logs.
 
 ### Migrating from Interactivated Customerreview (`interactivated/customerreview`)
 
@@ -283,8 +287,8 @@ The refresh token is kept until Disconnect, until a manual token replaces it, or
 **Compatibility**: Magento 2.4.6+ and PHP 8.2+  
 **Developer**: Kiyoh  
 **License**: Proprietary  
-**Module version on this branch**: 1.5.1  
-**Newest Git tag**: v1.5.1 (also served by Packagist).  
+**Module version on this branch**: 1.5.3  
+**Newest Git tag**: v1.5.1 on Packagist until v1.5.3 is tagged; this branch targets the next patch release.  
 **Last Updated**: October 2026
 
 ---

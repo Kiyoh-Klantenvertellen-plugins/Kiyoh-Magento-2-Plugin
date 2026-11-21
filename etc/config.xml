@@ -20,6 +20,10 @@
                 <exclude_customer_groups></exclude_customer_groups>
                 <exclude_product_groups></exclude_product_groups>
             </review_invitations>
+            <product_structured_data>
+                <enabled>0</enabled>
+                <output_mode>standalone</output_mode>
+            </product_structured_data>
             <product_sync>
                 <enabled>0</enabled>
                 <auto_sync_enabled>1</auto_sync_enabled>

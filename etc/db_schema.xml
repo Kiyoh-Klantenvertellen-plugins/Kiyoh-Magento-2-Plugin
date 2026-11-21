@@ -8,6 +8,23 @@
             <column name="store_id"/>
         </constraint>
     </table>
+    <table name="kiyoh_reviews_order_invite" resource="default" engine="innodb" comment="Per-order review invitation send state">
+        <column xsi:type="int" name="order_id" unsigned="true" nullable="false" identity="false" comment="Sales Order Entity ID"/>
+        <column xsi:type="smallint" name="store_id" unsigned="true" nullable="false" comment="Store View ID"/>
+        <column xsi:type="varchar" name="invite_status" nullable="false" length="16" comment="sent or failed"/>
+        <column xsi:type="smallint" name="attempt_count" unsigned="true" nullable="false" default="0" comment="Send attempts"/>
+        <column xsi:type="text" name="last_error" nullable="true" comment="Last failure message"/>
+        <column xsi:type="int" name="next_retry_at" unsigned="true" nullable="true" comment="Unix timestamp for next cron retry"/>
+        <column xsi:type="timestamp" name="created_at" on_update="false" nullable="false" default="CURRENT_TIMESTAMP" comment="Created At"/>
+        <column xsi:type="timestamp" name="updated_at" on_update="true" nullable="false" default="CURRENT_TIMESTAMP" comment="Updated At"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="order_id"/>
+        </constraint>
+        <index referenceId="KIYOH_REVIEWS_ORDER_INVITE_RETRY" indexType="btree">
+            <column name="invite_status"/>
+            <column name="next_retry_at"/>
+        </index>
+    </table>
     <table name="kiyoh_reviews_connect_login" resource="default" engine="innodb" comment="Single-use Kiyoh-Connect PKCE login state">
         <column xsi:type="varchar" name="state" nullable="false" length="128" comment="OAuth state"/>
         <column xsi:type="mediumtext" name="payload" nullable="false" comment="Encrypted PKCE verifier and scope"/>
