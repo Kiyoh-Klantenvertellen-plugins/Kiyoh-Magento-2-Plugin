@@ -13,7 +13,7 @@ class ModuleWiringTest extends TestCase
         $xml = simplexml_load_file(KIYOH_MODULE_ROOT . '/etc/module.xml');
         $this->assertNotFalse($xml);
         $this->assertSame(ModuleMeta::VERSION, (string) $xml->module['setup_version']);
-        $this->assertSame('1.5.1', ModuleMeta::VERSION);
+        $this->assertSame('1.5.3', ModuleMeta::VERSION);
     }
 
     public function testMobileUrlConfigDefaultsToProductionAndStaging(): void
@@ -75,6 +75,7 @@ class ModuleWiringTest extends TestCase
         $events = file_get_contents(KIYOH_MODULE_ROOT . '/etc/adminhtml/events.xml');
         $api = file_get_contents(KIYOH_MODULE_ROOT . '/Service/ApiService.php');
         $order = file_get_contents(KIYOH_MODULE_ROOT . '/Observer/SalesOrderSaveAfter.php');
+        $processor = file_get_contents(KIYOH_MODULE_ROOT . '/Model/Invitation/OrderInvitationProcessor.php');
 
         $this->assertIsString($di);
         $this->assertStringContainsString('ShopHealthRepository', $di);
@@ -83,6 +84,7 @@ class ModuleWiringTest extends TestCase
 
         $this->assertIsString($schema);
         $this->assertStringContainsString('kiyoh_reviews_shop_health', $schema);
+        $this->assertStringContainsString('kiyoh_reviews_order_invite', $schema);
 
         $this->assertIsString($events);
         $this->assertStringContainsString('admin_system_config_changed_section_kiyoh_reviews', $events);
@@ -93,8 +95,12 @@ class ModuleWiringTest extends TestCase
         $this->assertStringContainsString('noteProductSync', $api);
 
         $this->assertIsString($order);
-        $this->assertStringContainsString('deferPublishing()', $order);
-        $this->assertStringContainsString('flushDeferred()', $order);
+        $this->assertStringContainsString('OrderStatusTransition::enteredTriggerStatus', $order);
+        $this->assertStringContainsString('LogPrivacy::maskEmail', $order);
+
+        $this->assertIsString($processor);
+        $this->assertStringContainsString('deferPublishing()', $processor);
+        $this->assertStringContainsString('flushDeferred()', $processor);
     }
 
     public function testTlsStaysOnAndTheTestCommandDoesNotUseObjectManager(): void

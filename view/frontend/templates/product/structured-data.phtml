@@ -1,0 +1,11 @@
+<?php
+/** @var \Kiyoh\Reviews\Block\ProductStructuredData $block */
+if (!$block->shouldRender()) {
+    return;
+}
+$jsonLd = $block->getJsonLd();
+if ($jsonLd === '') {
+    return;
+}
+?>
+<script type="application/ld+json"><?= /* @noEscape */ $jsonLd ?></script>

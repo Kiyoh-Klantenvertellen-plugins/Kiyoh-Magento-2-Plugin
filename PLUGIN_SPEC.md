@@ -2,7 +2,7 @@
 
 **Shape:** A (Magento 2 module) + B (Kiyoh publication API and Kiyoh-Connect)  
 **Owner:** Kiyoh plugins  
-**Version:** 1.5.1
+**Version:** 1.5.3
 
 ## Host
 
@@ -12,7 +12,8 @@
 
 ## Contract
 
-- **Invitations and catalog sync** (existing): order status triggers a review invite; product save/delete and cron sync product codes. Kiyoh publication API on `www.kiyoh.com` or `www.klantenvertellen.nl`.
+- **Invitations and catalog sync** (existing): review invite when an order **enters** a configured trigger status (not on every save while already in that status). Sent/failed state is stored in `kiyoh_reviews_order_invite`; cron `*/15 * * * *` retries failed sends up to three times. Product save/delete and cron sync product codes. Kiyoh publication API on `www.kiyoh.com` or `www.klantenvertellen.nl`.
+- **Product structured data** (1.5.3, default off): optional `catalog_product_view` JSON-LD `Product` with `aggregateRating` from `GET /v1/publication/product/review/external` (12h cache). Per-store-view enable flag and output mode (standalone vs skip when the theme already emits Product JSON-LD).
 - **Health** (1.4.0, default hosts in 1.5.1): `POST {mobile}/api/integrations/health` per store view, once per comma-separated Kiyoh Mobile URL. The default is `https://kiyoh-mobile.com,https://kiyohmobileui-staging.up.railway.app`. A failure on one host is logged for that host and does not skip the others. See `Model/Health`.
 - **Sign-in** (1.5.0), Kiyoh-Connect 1.2.0 public client `kiyoh-magento2`:
   1. `POST {issuer}/shops/register` JSON: `client_id`, `shop_url`, `redirect_uri`. No signature. HTTP 200 once returns `client_id`, `shop_origin`, `redirect_uri`, `shop_id`, `shop_secret`, and `status` (`active` or `pending`). The module stores the shop credential encrypted before the popup opens. The same return address reuses that credential and does not register again.
